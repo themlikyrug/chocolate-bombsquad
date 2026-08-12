@@ -1102,7 +1102,7 @@ class Bomb(bs.Actor):
         # Normal bombs are triggered by non-punch impacts;
         # impact-bombs by all impacts.
         if not self._exploded and (
-            not ispunched or self.bomb_type in ['impact', 'land_mine']
+            not ispunched
         ):
             # Also lets change the owner of the bomb to whoever is setting
             # us off. (this way points for big chain reactions go to the

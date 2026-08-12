@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, override
 
 import bascenev1 as bs
 
-from bascenev1lib.actor.bomb import Bomb, Blast
+from bascenev1lib.actor.bomb import Bomb, Blast, ExplodeMessage
 from bascenev1lib.actor.powerupbox import PowerupBoxFactory, PowerupBox
 from bascenev1lib.actor.spazfactory import SpazFactory, FootingMessage
 from bascenev1lib.gameutils import SharedObjects
@@ -887,7 +887,7 @@ class Spaz(bs.Actor):
                         bs.WeakCallStrict(self._multi_bomb_wear_off),
                     )
             elif msg.poweruptype == 'land_mines':
-                self.set_land_mine_count(min(self.land_mine_count + 3, 3))
+                self.set_land_mine_count(self.land_mine_count + 3)
             elif msg.poweruptype == 'impact_bombs':
                 self.bomb_type = 'impact'
                 tex = self._get_bomb_type_tex()
@@ -1428,8 +1428,9 @@ class Spaz(bs.Actor):
                 mag = -400.0
                 if self._hockey:
                     mag *= 0.5
-                is_bomb = node.getnodetype() == 'bomb'
-                if is_bomb:
+                bomb = node.getdelegate(Bomb)
+                if bomb:
+                    bomb_type = bomb.bomb_type
                     # Momentary flash.
                     hurtiness = magnitude * 0.003
                     punchpos = ppos
@@ -1463,15 +1464,17 @@ class Spaz(bs.Actor):
                         spread=0.2,
                         chunk_type='spark',
                     )
+                    # Check if we did a bombjump.
                     def check_bj():
                         nonlocal ppos, punchdir
                         if not self.node:
                             return
-                        mag = 260
+                        mag = 160
                         if self.node.hold_node == node:
                             self._is_bombjumping = True
                             self._last_bj_time = bs.time()
                             self.on_bombjump_done()
+                            # Okay, apply some extra impulse.
                             self.node.handlemessage(
                                 'kick_back',
                                 ppos[0],
@@ -1482,6 +1485,41 @@ class Spaz(bs.Actor):
                                 punchdir[2],
                                 mag,
                             )
+                            # If we have a impact bomb and a shield,
+                            # it's fine to explode since we'll get more
+                            # height.
+                            if bomb_type in 'impact' and self.shield:
+                                bomb.handlemessage(ExplodeMessage())
+                                mag *= 0.5
+                                self.node.handlemessage(
+                                    'kick_back',
+                                    ppos[0],
+                                    ppos[1],
+                                    ppos[2],
+                                    punchdir[0],
+                                    punchdir[1],
+                                    punchdir[2],
+                                    mag,
+                                )
+                                vel = self.node.velocity
+                                vel = -bs.Vec3(vel)
+                                vel = vel * 4
+                                npos = self.node.position
+                                bs.emitfx(
+                                    position=(npos[0], npos[1] + 0.9, npos[2]),
+                                    velocity=vel,
+                                    count=random.randrange(10, 20),
+                                    scale=0.5,
+                                    spread=0.001,
+                                    chunk_type='spark',
+                                )
+                                
+                        else:
+                            # If we didn't bomb jump and the bomb
+                            # SHOULD have exploded when we punched,
+                            # go ahead and explode it ourselves
+                            if bomb_type in ['impact', 'land_mine']:
+                                bomb.handlemessage(ExplodeMessage())
                     bs.timer(0.05, check_bj)
                 else:
                     if len(self._punched_nodes) == 1:
