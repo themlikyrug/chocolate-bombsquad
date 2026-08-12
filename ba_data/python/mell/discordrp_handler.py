@@ -11,6 +11,7 @@ import bascenev1 as bs
 from bascenev1lib.mainmenu import MainMenuActivity
 from bascenev1._activitytypes import JoinActivity
 from bascenev1._gameactivity import GameActivity
+from bascenev1lib.activity.coopscore import CoopScoreScreen
 # raahhh
 from babase._logging import applog as squdalog
 import mell.resources as melly
@@ -101,8 +102,8 @@ class RichPresence:
             'assets': {
                 'large_image': large_image,
                 'large_text': large_text,
-                'small_image': small_image, 
-                'small_text': small_text
+                **(({'small_image': small_image, 'small_text': small_text})
+                   if small_image else {}),
             },
             'timestamps': {'start': self.current_time},
         }
@@ -139,12 +140,15 @@ class RichPresence:
             if self.mode == 'menu_idle'
             else self._lstr('menuText')
         )
+        roster_size = max(1, len(bs.get_game_roster()))
+        party_size = (roster_size, bs.get_public_party_max_size())
         
         return self._build_data(
             details=details,
-            state='',
+            state='Party',
             large_image='logo',
             large_text=f'BombSquad',
+            party={'id': '00', 'size': party_size},
         )
 
     def _data_gameplay(self, fore_sesh, sesh_text, sesh_image) -> dict:
@@ -171,6 +175,36 @@ class RichPresence:
             details=details,
             state=state,
             large_image=map_image,
+            large_text=self.map,
+            small_image=sesh_image,
+            small_text=small_text,
+            party=party,
+        )
+    
+    def _data_coop_score(self, fore_sesh, sesh_text, sesh_image) -> dict:
+        activity = bs.get_foreground_host_activity()
+        players = activity.players
+
+        small_text = sesh_text
+        party = None
+        final_score = activity._score
+        won = activity._victory
+        sequential = activity._is_more_levels
+        name = activity._level_name
+        text = (
+            'wonWithAScoreOf' if won and sequential 
+            else 'lostWithAScoreOf' if not won and sequential
+            else 'endedWithAScoreOf'
+        )
+        party = {'id': '00', 'size': (len(activity.players), 4)}
+        state = self._lstr('playersText')
+        text = self._lstr(text, LEVEL=name, SCORE=str(final_score))
+        details = text
+
+        return self._build_data(
+            details=details,
+            state=state,
+            large_image='background',
             large_text=self.map,
             small_image=sesh_image,
             small_text=small_text,
@@ -221,6 +255,7 @@ class RichPresence:
                 'menu':      self._data_menu,
                 'menu_idle': self._data_menu,
                 'gameplay':  self._data_gameplay,
+                'coop_score':self._data_coop_score,
                 'lobby':     self._data_lobby,
                 'online':    self._data_online,
                 'replay':    self._data_replay,
@@ -252,6 +287,8 @@ class RichPresence:
             self.mode, self.last_mode, time_pref = 'lobby', 'lobby', 'app'
         elif isinstance(fg, MainMenuActivity):
             self.mode, self.last_mode, time_pref = 'menu', 'menu', 'app'
+        elif isinstance(fg, CoopScoreScreen):
+            self.mode, self.last_mode, time_pref = 'coop_score', 'gameplay', 'app'
         elif isinstance(fg, GameActivity):
             self.mode, self.last_mode, time_pref = 'gameplay', 'gameplay', 'game'
         elif bui.get_input_idle_time() >= 30 and self.mode == 'menu':

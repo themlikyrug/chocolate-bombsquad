@@ -1974,22 +1974,6 @@
     "titleText": "Watch",
     "watchReplayButtonText": "Watch\nReplay"
   },
-  "discordRPC": {
-	"menuText": "Browsing the Menu",
-	"menuAFKText": "Browsing the Menu",
-	"activityPlaying": "Playng ${ACTIVITY}",
-	"coopScoreRankText": "Score: ${SCORE}",
-	"noOne": "No One",
-	"noPlayers": "No Players",
-	"charSelectText": "Choosing Profiles",
-	"lobbyText": "Lobby",
-	"partyNameFallback": "a Party",
-	"playingOnline": "Playing Online in ${PARTY}",
-	"playingOnlineSimple": "Playing Online",
-	"watchingReplay": "Watching a Replay",
-	"replayText": "Replay",
-	"playersText": "Players"
-  },
   "waveText": "Wave",
   "wellSureText": "Well Sure!",
   "whatIsThisText": "What is this?",
@@ -2036,6 +2020,25 @@
 	"normal": "The Pad",
 	"the_pad_accurate": "The Pad (Accurate)",
 	"random": "Random"
+  },
+  "discordRPC": {
+	"menuText": "Browsing the Menu",
+	"menuAFKText": "Browsing the Menu",
+	"activityPlaying": "Playng ${ACTIVITY}",
+	"coopScoreRankText": "Score: ${SCORE}",
+	"noOne": "No One",
+	"noPlayers": "No Players",
+	"charSelectText": "Choosing Profiles",
+	"lobbyText": "Lobby",
+	"partyNameFallback": "a Party",
+	"playingOnline": "Playing Online in ${PARTY}",
+	"playingOnlineSimple": "Playing Online",
+	"watchingReplay": "Watching a Replay",
+	"replayText": "Replay",
+	"endedWithAScoreOf": "Ended ${LEVEL} with a score of ${SCORE}",
+	"lostWithAScoreOf": "Lost ${LEVEL} with a score of ${SCORE}",
+	"wonWithAScoreOf": "Won ${LEVEL} with a score of ${SCORE}",
+	"playersText": "Players"
   },
   "comment2": "ok end of vanilla tweaks stuff comment here cuz im too lazy to remove trailing commas"
 }
