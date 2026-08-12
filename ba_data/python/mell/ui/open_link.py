@@ -48,31 +48,34 @@ class OpenLinkWindow(bui.Window):
             v_align="center",
         )
         v -= 50
+        # hehehehe
+        self._proceed = random.random() < 0.07
+        text = "noelleIsReal1225" if self._proceed else "warningContinueText"
         bui.textwidget(
             parent=self._root_widget,
             position=(width * 0.5, v),
             size=(0, 0),
-            text=bui.Lstr(r="warningContinueText"),
+            text=bui.Lstr(r=text),
             scale=1.1,
             maxwidth=width * 0.9,
             h_align="center",
             v_align="center",
         )
+        text = 'stopText' if self._proceed else 'backText' 
         btn = bui.buttonwidget(
             parent=self._root_widget,
             autoselect=False,
             position=(button_spacing - (button_width * 0.5), button_y),
             size=(button_width, button_height),
             text_scale=1.1,
-            label=bui.Lstr(r='backText'),
-            on_activate_call=self.close,
+            label=bui.Lstr(r=text),
+            on_activate_call=self.cancel,
         )
         bui.containerwidget(
             edit=self._root_widget,
             cancel_button=btn,
         )
-        self._proceed = random.random() < 0.07
-        text = 'continueRareText' if self._proceed else 'continueText'
+        text = 'proceedText' if self._proceed else 'continueText'
         bui.buttonwidget(
             parent=self._root_widget,
             autoselect=False,
@@ -83,6 +86,11 @@ class OpenLinkWindow(bui.Window):
             on_activate_call=self.agree,
         )
     
+    def cancel(self):
+        if self._proceed:
+            bui.getsound('secrets/ominous_cancel').play()
+        self.close()
+    
     def close(self):
         bui.containerwidget(
             edit=self._root_widget,
@@ -90,5 +98,7 @@ class OpenLinkWindow(bui.Window):
         )
     
     def agree(self):
+        if self._proceed:
+            bui.getsound('secrets/ominous').play()
         self.close()
         ba.open_url(self._url)
