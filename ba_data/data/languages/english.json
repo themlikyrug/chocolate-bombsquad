@@ -2005,13 +2005,18 @@
   "yourBestScoresText": "Your Best Scores",
   "yourBestTimesText": "Your Best Times",
   "yourPrizeText": "Your prize:",
+  
+  
+  
   "comment": "vanilla tweaks language resources here",
+  "vanillaTweaksText": "Vanilla Tweaks",
   "connectingTextRaw": "Connecting",
   "resourcePacksText": "Resource Packs",
   "resourcePacksWarningText": "Resource packs are HIGHLY experimental and\nmay even just bug most of the time.\nThey will work sometimes, but they're \nreally broken and not recommended.",
   "willOpenLinkText": "This will open this link in your web-browser;",
   "warningContinueText": "Despite this, do you wish to continue?",
-  "continueTextRare": "Proceed",
+  "stopText": "Stop",
+  "proceedText": "Proceed",
   "fromText": "From",
   "toText": "To",
   "inText": "In",
@@ -2023,7 +2028,13 @@
   "nothingEnabledYetText": "Nothing enabled yet",
   "userInvalidResourcePacks": "Invalid resource packs located at; \n${PACKS}\nPlease read the console for more info.",
   "applyingResourcePacksText": "Applying resource packs...",
-  "doNotQuitGameText": "DO NOT QUIT THE GAME!!!",
+  "doNotQuitGameText": "Do not quit the game.",
   "failedToApplyResourcePack": "Failed to apply resource pack;\n${ERROR}",
+  "menuTypesText": "Main Menu Background",
+  "menuTypes": {
+	"normal": "The Pad",
+	"the_pad_accurate": "The Pad (Accurate)",
+	"random": "Random"
+  },
   "comment2": "ok end of vanilla tweaks stuff comment here cuz im too lazy to remove trailing commas"
 }

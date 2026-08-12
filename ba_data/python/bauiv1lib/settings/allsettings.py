@@ -32,7 +32,7 @@ class AllSettingsWindow(bui.MainWindow):
         bui.set_analytics_screen('Settings Window')
         assert bui.app.classic is not None
         uiscale = bui.app.ui_v1.uiscale
-        width = 1000 if uiscale is bui.UIScale.SMALL else 900
+        width = 1000 if uiscale is bui.UIScale.SMALL else 1100
         height = 800 if uiscale is bui.UIScale.SMALL else 450
         self._r = 'settingsWindow'
 
@@ -118,7 +118,7 @@ class AllSettingsWindow(bui.MainWindow):
         bwidth = 200
         bheight = 230
         margin = 1
-        all_buttons_width = 4.0 * bwidth + 3.0 * margin
+        all_buttons_width = 5.0 * bwidth + 3.0 * margin
 
         x = width * 0.5 - all_buttons_width * 0.5
 
@@ -220,6 +220,17 @@ class AllSettingsWindow(bui.MainWindow):
             color=(0.8, 0.95, 1),
             imgoffs=(0, 5.0),
         )
+        x += bwidth + margin
+        
+        self._vt_button = _button(
+            widgetid=f'{self.main_window_id_prefix}|vt',
+            position=(x, y),
+            label=bui.Lstr(resource='vanillaTweaksText'),
+            call=self._open_settings,
+            texture=bui.gettexture('logo'),
+            imgsize=150,
+            imgoffs=(0, 5.0),
+        )
 
         # Select controllers by default.
         bui.containerwidget(
@@ -239,6 +250,18 @@ class AllSettingsWindow(bui.MainWindow):
                 edit=self._advanced_button,
                 right_widget=bui.get_special_widget('squad_button'),
             )
+    
+    def _open_settings(self) -> None:
+        # pylint: disable=cyclic-import
+        from mell.ui.settings import VTSettingsWindow
+
+        # no-op if we're not in control.
+        if not self.main_window_has_control():
+            return
+
+        self.main_window_replace(
+            lambda: VTSettingsWindow(origin_widget=self._vt_button)
+        )
 
     @override
     def get_main_window_state(self) -> bui.MainWindowState:

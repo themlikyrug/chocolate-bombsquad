@@ -10,6 +10,7 @@ import weakref
 from typing import TYPE_CHECKING, override
 
 from bacommon.locale import LocaleResolved
+from bascenev1lib.maps import ThePad
 import bascenev1 as bs
 import bauiv1 as bui
 
@@ -36,18 +37,16 @@ class MainMenuActivity(bs.Activity[bs.Player, bs.Team]):
         self.version: bs.NodeActor | None = None
         self.beta_info: bs.NodeActor | None = None
         self.beta_info_2: bs.NodeActor | None = None
-        self.bottom: bs.NodeActor | None = None
-        self.vr_bottom_fill: bs.NodeActor | None = None
-        self.vr_top_fill: bs.NodeActor | None = None
-        self.terrain: bs.NodeActor | None = None
-        self.trees: bs.NodeActor | None = None
-        self.bgterrain: bs.NodeActor | None = None
         self._ts = 0.86
         self._language: str | None = None
         self._update_timer: bs.Timer | None = None
         self._news: NewsDisplay | None = None
         self._attract_mode_timer: bs.Timer | None = None
         self._logo_rotate_timer: bs.Timer | None = None
+        self._chosen_map = random.choice(list(bs.app.classic.maps.values()))
+        self._chosen_map.preload()
+        self._the_pad = ThePad
+        self._the_pad.preload()
 
     @override
     def on_transition_in(self) -> None:
@@ -84,120 +83,8 @@ class MainMenuActivity(bs.Activity[bs.Player, bs.Team]):
             assert self.my_name.node
             bs.animate(self.my_name.node, 'opacity', {2.3: 0, 3.0: 1.0})
 
-        # Throw in test build info.
-        self.beta_info = self.beta_info_2 = None
-        if env.variant is type(env.variant).TEST_BUILD:
-            pos = (230, 35)
-            self.beta_info = bs.NodeActor(
-                bs.newnode(
-                    'text',
-                    attrs={
-                        'v_attach': 'center',
-                        'h_align': 'center',
-                        'color': (1, 1, 1, 1),
-                        'shadow': 0.5,
-                        'flatness': 0.5,
-                        'scale': 1,
-                        'vr_depth': -60,
-                        'position': pos,
-                        'text': bs.Lstr(resource='testBuildText'),
-                    },
-                )
-            )
-            if not self._did_initial_transition:
-                assert self.beta_info.node
-                bs.animate(self.beta_info.node, 'opacity', {1.3: 0, 1.8: 1.0})
-
-        mesh = bs.getmesh('thePadLevel')
-        trees_mesh = bs.getmesh('trees')
-        bottom_mesh = bs.getmesh('thePadLevelBottom')
-        color_texture = bs.gettexture('thePadLevelColor')
-        trees_texture = bs.gettexture('treesColor')
-        bgtex = bs.gettexture('menuBG')
-        bgmesh = bs.getmesh('thePadBG')
-
-        # Load these last since most platforms don't use them.
-        vr_bottom_fill_mesh = bs.getmesh('thePadVRFillBottom')
-        vr_top_fill_mesh = bs.getmesh('thePadVRFillTop')
-
         gnode = self.globalsnode
         gnode.camera_mode = 'rotate'
-
-        tint = (1.14, 1.1, 1.0)
-        gnode.tint = tint
-        gnode.ambient_color = (1.06, 1.04, 1.03)
-        gnode.vignette_outer = (0.45, 0.55, 0.54)
-        gnode.vignette_inner = (0.99, 0.98, 0.98)
-
-        self.bottom = bs.NodeActor(
-            bs.newnode(
-                'terrain',
-                attrs={
-                    'mesh': bottom_mesh,
-                    'lighting': False,
-                    'reflection': 'soft',
-                    'reflection_scale': [0.45],
-                    'color_texture': color_texture,
-                },
-            )
-        )
-        self.vr_bottom_fill = bs.NodeActor(
-            bs.newnode(
-                'terrain',
-                attrs={
-                    'mesh': vr_bottom_fill_mesh,
-                    'lighting': False,
-                    'vr_only': True,
-                    'color_texture': color_texture,
-                },
-            )
-        )
-        self.vr_top_fill = bs.NodeActor(
-            bs.newnode(
-                'terrain',
-                attrs={
-                    'mesh': vr_top_fill_mesh,
-                    'vr_only': True,
-                    'lighting': False,
-                    'color_texture': bgtex,
-                },
-            )
-        )
-        self.terrain = bs.NodeActor(
-            bs.newnode(
-                'terrain',
-                attrs={
-                    'mesh': mesh,
-                    'color_texture': color_texture,
-                    'reflection': 'soft',
-                    'reflection_scale': [0.3],
-                },
-            )
-        )
-        self.trees = bs.NodeActor(
-            bs.newnode(
-                'terrain',
-                attrs={
-                    'mesh': trees_mesh,
-                    'lighting': False,
-                    'reflection': 'char',
-                    'reflection_scale': [0.1],
-                    'color_texture': trees_texture,
-                },
-            )
-        )
-        self.bgterrain = bs.NodeActor(
-            bs.newnode(
-                'terrain',
-                attrs={
-                    'mesh': bgmesh,
-                    'color': (0.92, 0.91, 0.9),
-                    'lighting': False,
-                    'background': True,
-                    'color_texture': bgtex,
-                },
-            )
-        )
 
         self._update_timer = bs.Timer(0.1, self._update, repeat=True)
         self._update()
@@ -208,9 +95,112 @@ class MainMenuActivity(bs.Activity[bs.Player, bs.Team]):
         random.seed()
 
         # Need to update this for toolbar mode; currenly doesn't fit.
-        # if bool(False):
-        #     if not (env.demo or env.arcade):
-        #         self._news = NewsDisplay(self)
+        self._news = NewsDisplay(self)
+        menu_type = bui.app.config.setdefault('vt_menutype', 'normal')
+        if menu_type == 'the_pad_accurate':
+            # Just set our map to The Pad.
+            # (of which, we preloaded in init)
+            self.map = self._the_pad()
+        elif menu_type == 'random':
+            # Alright, get the map we picked in init.
+            self.map = self._chosen_map()
+            # If the chosen map isn't the pad, we want
+            # regular camera so we look nicer.
+            if type(self.map) != ThePad:
+                gnode.camera_mode = 'follow'
+        elif menu_type == 'normal':
+            mesh = bs.getmesh('thePadLevel')
+            trees_mesh = bs.getmesh('trees')
+            bottom_mesh = bs.getmesh('thePadLevelBottom')
+            color_texture = bs.gettexture('thePadLevelColor')
+            trees_texture = bs.gettexture('treesColor')
+            bgtex = bs.gettexture('menuBG')
+            bgmesh = bs.getmesh('thePadBG')
+
+            # Load these last since most platforms don't use them.
+            vr_bottom_fill_mesh = bs.getmesh('thePadVRFillBottom')
+            vr_top_fill_mesh = bs.getmesh('thePadVRFillTop')
+
+            gnode = self.globalsnode
+            gnode.camera_mode = 'rotate'
+
+            tint = (1.14, 1.1, 1.0)
+            gnode.tint = tint
+            gnode.ambient_color = (1.06, 1.04, 1.03)
+            gnode.vignette_outer = (0.45, 0.55, 0.54)
+            gnode.vignette_inner = (0.99, 0.98, 0.98)
+
+            self.bottom = bs.NodeActor(
+                bs.newnode(
+                    'terrain',
+                    attrs={
+                        'mesh': bottom_mesh,
+                        'lighting': False,
+                        'reflection': 'soft',
+                        'reflection_scale': [0.45],
+                        'color_texture': color_texture,
+                    },
+                )
+            )
+            self.vr_bottom_fill = bs.NodeActor(
+                bs.newnode(
+                    'terrain',
+                    attrs={
+                        'mesh': vr_bottom_fill_mesh,
+                        'lighting': False,
+                        'vr_only': True,
+                        'color_texture': color_texture,
+                    },
+                )
+            )
+            self.vr_top_fill = bs.NodeActor(
+                bs.newnode(
+                    'terrain',
+                    attrs={
+                        'mesh': vr_top_fill_mesh,
+                        'vr_only': True,
+                        'lighting': False,
+                        'color_texture': bgtex,
+                    },
+                )
+            )
+            self.terrain = bs.NodeActor(
+                bs.newnode(
+                    'terrain',
+                    attrs={
+                        'mesh': mesh,
+                        'color_texture': color_texture,
+                        'reflection': 'soft',
+                        'reflection_scale': [0.3],
+                    },
+                )
+            )
+            self.trees = bs.NodeActor(
+                bs.newnode(
+                    'terrain',
+                    attrs={
+                        'mesh': trees_mesh,
+                        'lighting': False,
+                        'reflection': 'char',
+                        'reflection_scale': [0.1],
+                        'color_texture': trees_texture,
+                    },
+                )
+            )
+            self.bgterrain = bs.NodeActor(
+                bs.newnode(
+                    'terrain',
+                    attrs={
+                        'mesh': bgmesh,
+                        'color': (0.92, 0.91, 0.9),
+                        'lighting': False,
+                        'background': True,
+                        'color_texture': bgtex,
+                    },
+                )
+            )
+        else:
+            raise ValueError(f'Invalid menu type; {menu_type}')
 
         self._attract_mode_timer = bs.Timer(
             3.12, self._update_attract_mode, repeat=True
@@ -232,14 +222,8 @@ class MainMenuActivity(bs.Activity[bs.Player, bs.Team]):
                 self._logo_node.texture = bs.gettexture(
                     custom_texture if custom_texture is not None else 'logo'
                 )
-                self._logo_node.mesh_opaque = (
-                    None if custom_texture is not None else bs.getmesh('logo')
-                )
-                self._logo_node.mesh_transparent = (
-                    None
-                    if custom_texture is not None
-                    else bs.getmesh('logoTransparent')
-                )
+                self._logo_node.mesh_opaque = None
+                self._logo_node.mesh_transparent = None
 
         # If language has changed, recreate our logo text/graphics.
         lang = app.lang.language
@@ -888,8 +872,6 @@ def _preload1() -> None:
     for tname in ['playerLineup', 'lock']:
         bs.gettexture(tname)
     for tex in [
-        'iconRunaround',
-        'iconOnslaught',
         'medalComplete',
         'medalBronze',
         'medalSilver',
@@ -953,7 +935,9 @@ def _preload3() -> None:
         bs.gettexture(tname)
     for sname in ['freeze', 'fuse01', 'activateBeep', 'warnBeep']:
         bs.getsound(sname)
-    SpazFactory.get()
+    factory = SpazFactory.get()
+    for appearance in bs.app.classic.spaz_appearances.keys():
+        factory.get_media(appearance)
     bui.apptimer(0.2, _preload4)
 
 

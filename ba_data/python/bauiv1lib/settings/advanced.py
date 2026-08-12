@@ -122,7 +122,7 @@ class AdvancedSettingsWindow(bui.MainWindow):
 
         self._do_vr_test_button = app.env.vr
         self._do_net_test_button = False
-        self._do_resource_packs_button = True
+        self._do_resource_packs_button = False
         self._extra_button_spacing = self._spacing * 2.5
 
         if self._do_vr_test_button:
