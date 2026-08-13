@@ -226,15 +226,15 @@ class MainMenuWindow(bui.MainWindow):
             screensize = bui.get_virtual_screen_size()
             safesize = bui.get_virtual_safe_area_size()
             root_widget_scale = min(1.55, 1.3 * screensize[0] / safesize[0])
-            button_y_offs = -20.0
+            button_y_offs = -30.0
             self._button_height *= 1.3
         elif uiscale is bui.UIScale.MEDIUM:
             root_widget_scale = 1.3
-            button_y_offs = -55.0
+            button_y_offs = -90.0
             self._button_height *= 1.25
         else:
             root_widget_scale = 1.0
-            button_y_offs = -90.0
+            button_y_offs = -140.0
             self._button_height *= 1.2
 
         bui.containerwidget(

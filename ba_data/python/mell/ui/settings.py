@@ -30,7 +30,7 @@ class VTSettingsWindow(bui.MainWindow):
         assert bui.app.classic is not None
         uiscale = bui.app.ui_v1.uiscale
         width = 1000 if uiscale is bui.UIScale.SMALL else 650
-        height = 750 if uiscale is bui.UIScale.SMALL else 400
+        height = 550 if uiscale is bui.UIScale.SMALL else 400
 
         uiscale = bui.app.ui_v1.uiscale
         # Do some fancy math to fill all available screen area up to the
@@ -66,6 +66,7 @@ class VTSettingsWindow(bui.MainWindow):
         self._col_x = width * 0.12
         if uiscale is bui.UIScale.SMALL:
             self._col_x -= 40
+            scroll_bottom -= 20
         self.is_small = bui.app.ui_v1.uiscale is bui.UIScale.SMALL
         self.reset_clicks = 0
         
@@ -125,14 +126,14 @@ class VTSettingsWindow(bui.MainWindow):
         )
         bui.textwidget(
             parent=self._root_widget,
-            position=(0, yoffs - (55 if uiscale is bui.UIScale.SMALL else 35)),
-            size=(width, 25),
+            position=(width * 0.5, yoffs - (55 if uiscale is bui.UIScale.SMALL else 35)),
+            size=(0, 0),
             text=bui.Lstr(resource=f'vanillaTweaksText'),
             color=bui.app.ui_v1.title_color,
             h_align='center',
             v_align='center',
             scale=1.0,
-            maxwidth=4000,
+            maxwidth=400,
         )
         row_height = 50
         # dicts containing options
@@ -359,6 +360,11 @@ class VTSettingsWindow(bui.MainWindow):
                 "display": menu_choices_display,
                 "current": bui.app.config.setdefault("vt_menutype", "normal"),
                 "callback": bui.WeakCallPartial(self._set_config, 'vt_menutype'),
+            },
+            {
+                'type': 'checkbox',
+                'label': 'botsInMenuText',
+                'key': 'vt_botsinmenu',
             },
         ]
         return settings

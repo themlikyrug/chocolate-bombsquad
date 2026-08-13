@@ -2016,6 +2016,7 @@
   "doNotQuitGameText": "Do not quit the game.",
   "failedToApplyResourcePack": "Failed to apply resource pack;\n${ERROR}",
   "menuTypesText": "Main Menu Background",
+  "botsInMenuText": "Spawn Bots in the Main Menu",
   "menuTypes": {
 	"normal": "The Pad",
 	"the_pad_accurate": "The Pad (Accurate)",

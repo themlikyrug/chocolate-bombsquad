@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, override
 
 from bacommon.locale import LocaleResolved
 from bascenev1lib.maps import ThePad
+from bascenev1lib.actor.spazbot import DemoSpazBotSet, DemoBot
 import bascenev1 as bs
 import bauiv1 as bui
 
@@ -37,6 +38,7 @@ class MainMenuActivity(bs.Activity[bs.Player, bs.Team]):
         self.version: bs.NodeActor | None = None
         self.beta_info: bs.NodeActor | None = None
         self.beta_info_2: bs.NodeActor | None = None
+        self.bot_sets: list[DemoSpazBotSet] = []
         self._ts = 0.86
         self._language: str | None = None
         self._update_timer: bs.Timer | None = None
@@ -47,6 +49,47 @@ class MainMenuActivity(bs.Activity[bs.Player, bs.Team]):
         self._chosen_map.preload()
         self._the_pad = ThePad
         self._the_pad.preload()
+    
+    def set_respawner(self, spaz: DemoBot):
+        # Alright, tell this spaz's node
+        # to make us spawn another bot when it dies.
+        spaz.node.add_death_action(
+            bs.WeakCallPartial(self.spawn_bot, 0)
+        )
+        # Mute the spaz.
+        for attr in (
+            'jump_sounds',
+            'attack_sounds',
+            'impact_sounds',
+            'death_sounds',
+            'pickup_sounds',
+            'fall_sounds',
+        ):
+            setattr(spaz.node, attr, [])
+        # Tell the next spaz to randomize.
+        appearance = random.choice(
+            list(bs.app.classic.spaz_appearances.keys())
+        )
+        DemoBot.randomize_traits(appearance=appearance)
+    
+    def spawn_bot(self, spawn_time: float = 0):
+        # We spawn far away from every bot.
+        pos = self.map.get_ffa_start_position([])
+        # Randomize everything.
+        appearance = random.choice(
+            list(bs.app.classic.spaz_appearances.keys())
+        )
+        DemoBot.randomize_traits(appearance=appearance)
+        # Give it a controller.
+        this_set = DemoSpazBotSet()
+        self.bot_sets.append(this_set)
+        # Alright, now spawn it
+        this_set.spawn_bot(
+            DemoBot,
+            pos=pos,
+            spawn_time=spawn_time,
+            on_spawn_call=bs.WeakCallPartial(self.set_respawner),
+        )
 
     @override
     def on_transition_in(self) -> None:
@@ -97,6 +140,7 @@ class MainMenuActivity(bs.Activity[bs.Player, bs.Team]):
         # Need to update this for toolbar mode; currenly doesn't fit.
         self._news = NewsDisplay(self)
         menu_type = bui.app.config.setdefault('vt_menutype', 'normal')
+        bots_in_menu = bui.app.config.setdefault('vt_botsinmenu', False)
         if menu_type == 'the_pad_accurate':
             # Just set our map to The Pad.
             # (of which, we preloaded in init)
@@ -109,6 +153,7 @@ class MainMenuActivity(bs.Activity[bs.Player, bs.Team]):
             if type(self.map) != ThePad:
                 gnode.camera_mode = 'follow'
         elif menu_type == 'normal':
+            self.map = None
             mesh = bs.getmesh('thePadLevel')
             trees_mesh = bs.getmesh('trees')
             bottom_mesh = bs.getmesh('thePadLevelBottom')
@@ -201,6 +246,16 @@ class MainMenuActivity(bs.Activity[bs.Player, bs.Team]):
             )
         else:
             raise ValueError(f'Invalid menu type; {menu_type}')
+        # If we have a map, let's go ahead 
+        # and spawn some bots randomly
+        # if the player wants em.
+        if self.map:
+            spawn_time = 1
+            if bots_in_menu and random.random() < 0.6:
+                amount = random.randint(5, 15)
+                for _ in range(amount):
+                    self.spawn_bot(spawn_time=spawn_time)
+                    spawn_time += 0.2
 
         self._attract_mode_timer = bs.Timer(
             3.12, self._update_attract_mode, repeat=True
