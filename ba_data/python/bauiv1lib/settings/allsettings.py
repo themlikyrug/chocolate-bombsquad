@@ -32,7 +32,7 @@ class AllSettingsWindow(bui.MainWindow):
         bui.set_analytics_screen('Settings Window')
         assert bui.app.classic is not None
         uiscale = bui.app.ui_v1.uiscale
-        width = 1000 if uiscale is bui.UIScale.SMALL else 1100
+        width = 1500 if uiscale is bui.UIScale.SMALL else 1100
         height = 800 if uiscale is bui.UIScale.SMALL else 450
         self._r = 'settingsWindow'
 
@@ -47,8 +47,7 @@ class AllSettingsWindow(bui.MainWindow):
         # We're a generally widescreen shaped window, so bump our
         # overall scale up a bit when screen width is wider than safe
         # bounds to take advantage of the extra space.
-        smallscale = min(2.0, 1.5 * screensize[0] / safesize[0])
-
+        smallscale = 1.2
         scale = (
             smallscale
             if uiscale is bui.UIScale.SMALL
@@ -247,7 +246,7 @@ class AllSettingsWindow(bui.MainWindow):
 
             # Right from our rightmost widget should go to squad button.
             bui.widget(
-                edit=self._advanced_button,
+                edit=self._vt_button,
                 right_widget=bui.get_special_widget('squad_button'),
             )
     
