@@ -144,15 +144,12 @@ class EditProfileWindow(
         except Exception:
             # Let's set the default icon to spaz for our first profile; after
             # that we go random.
-            # (SCRATCH THAT.. we now hard-code account-profiles to start with
-            # spaz which has a similar effect)
-            # try: p_len = len(bui.app.config['Player Profiles'])
-            # except Exception: p_len = 0
-            # if p_len == 0: icon_index = self._spazzes.index('Spaz')
-            # else:
             random.seed()
-            icon_index = random.randrange(len(self._spazzes))
-            assigned_random_char = True
+            if existing_profile:
+                icon_index = self._spazzes.index('Spaz')
+            else:
+                icon_index = random.randint(0, len(self._spazzes))
+                assigned_random_char = True
         self._icon_index = icon_index
         bui.buttonwidget(edit=save_button, on_activate_call=self.save)
 
