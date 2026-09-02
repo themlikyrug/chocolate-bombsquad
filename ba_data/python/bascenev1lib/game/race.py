@@ -510,50 +510,110 @@ class RaceGame(bs.TeamGameActivity[Player, Team]):
             0.25, self._update_player_order, repeat=True
         )
 
-        if self.slow_motion:
-            t_scale = 0.4
-            light_y = 50
-        else:
-            t_scale = 1.0
-            light_y = 150
-        lstart = 7.1 * t_scale
-        inc = 1.25 * t_scale
-
-        bs.timer(lstart, self._do_light_1)
-        bs.timer(lstart + inc, self._do_light_2)
-        bs.timer(lstart + 2 * inc, self._do_light_3)
-        bs.timer(lstart + 3 * inc, self._start_race)
-
-        self._start_lights = []
-        for i in range(4):
-            lnub = bs.newnode(
-                'image',
+        # If we're the coop variant; we prefer a faster
+        # start. If we're ffa, we prefer the regular variant for the OGs.
+        if isinstance(self.session, bs.CoopSession):
+            timer_text = bs.newnode(
+                'text',
                 attrs={
-                    'texture': bs.gettexture('nub'),
-                    'opacity': 1.0,
-                    'absolute_scale': True,
-                    'position': (-75 + i * 50, light_y),
-                    'scale': (50, 50),
-                    'attach': 'center',
-                },
+                    'v_attach': 'bottom',
+                    'h_align': 'center',
+                    'scale': 1.5,
+                    'position': (0, 40),
+                    'text': 'GET READY...',
+                    'flatness': 1,
+                }
             )
             bs.animate(
-                lnub,
+                timer_text,
                 'opacity',
                 {
-                    4.0 * t_scale: 0,
-                    5.0 * t_scale: 1.0,
-                    12.0 * t_scale: 1.0,
-                    12.5 * t_scale: 0.0,
-                },
+                    0: 0,
+                    0.3: 1.0,
+                }
             )
-            bs.timer(13.0 * t_scale, lnub.delete)
-            self._start_lights.append(lnub)
+            # FIXME: Move to globals.
+            def start_tick():
+                current_time = 1
+                start_time = 0
+                def tick():
+                    nonlocal current_time, start_time, timer_text
+                    current_time -= 0.01
+                    timer_text.text = str(round(current_time, 2))
+                    if current_time <= start_time:
+                        timer_text.text = 'GO!'
+                        bs.animate(
+                            timer_text,
+                            'scale',
+                            {
+                                0: 1.5,
+                                0.03: 3,
+                                0.15: 1.5,
+                                0.6: 1.5,
+                                0.9: 0,
+                            }
+                        )
+                        bs.animate_array(
+                            timer_text,
+                            'color',
+                            3,
+                            {
+                                0: (1, 1, 1),
+                                0.03: (0.2, 0.6, 1),
+                                0.15: (1, 1, 1),
+                            }
+                        )
+                        bs.timer(0.9, timer_text.delete)
+                        self._start_race()
+                        self._tick_timer = None
+                self._tick_timer = bs.Timer(0.01, tick, repeat=True)
+            bs.timer(0.5, start_tick)
+                
+        else:
+            if self.slow_motion:
+                t_scale = 0.4
+                light_y = 50
+            else:
+                t_scale = 1.0
+                light_y = 150
+            lstart = 7.1 * t_scale
+            inc = 1.25 * t_scale
 
-        self._start_lights[0].color = (0.2, 0, 0)
-        self._start_lights[1].color = (0.2, 0, 0)
-        self._start_lights[2].color = (0.2, 0.05, 0)
-        self._start_lights[3].color = (0.0, 0.3, 0)
+            bs.timer(lstart, self._do_light_1)
+            bs.timer(lstart + inc, self._do_light_2)
+            bs.timer(lstart + 2 * inc, self._do_light_3)
+            bs.timer(lstart + 3 * inc, self._start_race)
+
+            self._start_lights = []
+            for i in range(4):
+                lnub = bs.newnode(
+                    'image',
+                    attrs={
+                        'texture': bs.gettexture('nub'),
+                        'opacity': 1.0,
+                        'absolute_scale': True,
+                        'position': (-75 + i * 50, light_y),
+                        'scale': (50, 50),
+                        'attach': 'center',
+                    },
+                )
+                bs.animate(
+                    lnub,
+                    'opacity',
+                    {
+                        4.0 * t_scale: 0,
+                        5.0 * t_scale: 1.0,
+                        12.0 * t_scale: 1.0,
+                        12.5 * t_scale: 0.0,
+                    },
+                )
+                bs.timer(13.0 * t_scale, lnub.delete)
+                self._start_lights.append(lnub)
+
+            self._start_lights[0].color = (0.2, 0, 0)
+            self._start_lights[1].color = (0.2, 0, 0)
+            self._start_lights[2].color = (0.2, 0.05, 0)
+            self._start_lights[3].color = (0.0, 0.3, 0)
 
     def _do_light_1(self) -> None:
         assert self._start_lights is not None
@@ -572,7 +632,8 @@ class RaceGame(bs.TeamGameActivity[Player, Team]):
 
     def _start_race(self) -> None:
         assert self._start_lights is not None
-        self._start_lights[3].color = (0.0, 1.0, 0)
+        if not isinstance(self.session, bs.CoopSession):
+            self._start_lights[3].color = (0.0, 1.0, 0)
         self._beep_2_sound.play()
         for player in self.players:
             if player.actor is not None:
