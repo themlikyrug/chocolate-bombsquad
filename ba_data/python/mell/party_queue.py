@@ -1,4 +1,3 @@
-"""Class that handles the queue for connecting to a party"""
 import bascenev1 as bs
 import babase as ba
 from dataclasses import dataclass
@@ -13,6 +12,7 @@ class QueuePlayer:
     acc_id: str
 
 class PartyQueueHandler:
+    """Class that handles the queue for connecting to a party"""
     def __del__(self):
         self._done = True
         self._clear_actor()
@@ -20,12 +20,18 @@ class PartyQueueHandler:
     def _clear_actor(self):
         # just clear its ref for now;
         # the actor can die by itself
-        self._actor._delegate = None
+        if self._actor:
+            self._actor._delegate = None
         self._actor = None
     
     def _update_our_actor(self):
         # if our actor is a class, but it doesn't exist,
         # we assume a new session killed it, so let's tell it to recreate itself
+        session = bs.get_foreground_host_session()
+        # No session exists? Likely in a host session.
+        # We'll clear our actor so we don't end up in a strongref.
+        if not session:
+            self._clear_actor()
         if not self._actor:
             return
         if not self._actor.exists():

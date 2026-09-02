@@ -1,9 +1,11 @@
-"""Class that handles displaying current party queue"""
 import bascenev1 as bs
 import bauiv1 as bui
 import babase as ba
 
+# i LIED its not a actor otherwise it would 
+# have kept complaining about not dying
 class PartyQueueActor:
+    """Class that handles displaying current party queue"""
     def __del__(self):
         self._delete()
         self._dead = True
