@@ -182,6 +182,7 @@ class ResourcePacksWindow(bui.MainWindow):
 
     MOVE_BUTTON_SIZE = 80
     MOVE_BUTTON_COLOR = (0.5, 0.45, 0.6)
+    MOVE_BUTTON_DISABLED_COLOR = (0.3, 0.3, 0.35)
 
     def main_window_should_preserve_selection(self) -> bool:
         return False
@@ -196,7 +197,8 @@ class ResourcePacksWindow(bui.MainWindow):
         self._pack_buttons: dict = {}
         self._pack_name_widgets: dict = {}
         self._selected_pack = None
-        
+        self._filter_text = ''
+
         self._select_sound = bui.getsound('click01')
         self._move_sound = bui.getsound('gunCocking')
         self._done_sound = bui.getsound('gunCocking')
@@ -213,12 +215,14 @@ class ResourcePacksWindow(bui.MainWindow):
             transition=transition,
         )
         self._applying_window = None
+        self._saved_music = None
 
         self._create_header()
         self._create_pack_lists()
         self._create_move_buttons()
 
         self.rebuild()
+        self._update_selection_state()
 
     def _load_enabled_packs(self) -> None:
         """Load the currently enabled packs from the config."""
@@ -249,14 +253,37 @@ class ResourcePacksWindow(bui.MainWindow):
             v_align="center",
         )
 
+        self._filter_widget = bui.textwidget(
+            parent=self._root_widget,
+            position=(self.WIDTH * 0.5 - 170, self.HEIGHT - 116),
+            size=(340, 38),
+            text='',
+            editable=True,
+            description=bui.Lstr(resource='filterText'),
+            maxwidth=300,
+            h_align='left',
+            v_align='center',
+            on_return_press_call=self._apply_filter,
+        )
         bui.textwidget(
             parent=self._root_widget,
-            position=(self.WIDTH * 0.5, self.HEIGHT - 78),
+            position=(self.WIDTH * 0.5 - 205, self.HEIGHT - 94),
             size=(0, 0),
-            text="Select a pack below, then use the arrows to enable or disable it",
+            text=bui.Lstr(resource='filterText'),
             color=(0.7, 0.7, 0.75),
+            scale=0.78,
+            h_align='right',
+            v_align='center',
+        )
+
+        self._selection_status = bui.textwidget(
+            parent=self._root_widget,
+            position=(self.WIDTH * 0.5, self.HEIGHT - 68),
+            size=(0, 0),
+            text="Select a pack below, then use the arrows to move it between lists.",
+            color=(0.72, 0.72, 0.78),
             scale=0.75,
-            maxwidth=600,
+            maxwidth=700,
             h_align="center",
             v_align="center",
         )
@@ -390,13 +417,16 @@ class ResourcePacksWindow(bui.MainWindow):
             self.MOVE_BUTTON_SIZE,
         )
 
-        x = (self.WIDTH - self.MOVE_BUTTON_SIZE) * 0.5 - 45
+        center_x = 35 + self.WIDTH * 0.5 - (self.MOVE_BUTTON_SIZE * 0.5)
         y = self.HEIGHT * 0.5 - (self.MOVE_BUTTON_SIZE * 0.5)
+        row_gap = 5
+        col_gap = 5
+        row_2_y = y - self.MOVE_BUTTON_SIZE - 30
 
         self._send_to_disabled_btn = bui.buttonwidget(
             parent=self._root_widget,
             label=bui.charstr(bui.SpecialChar.LEFT_ARROW),
-            position=(x, y),
+            position=(center_x - self.MOVE_BUTTON_SIZE - col_gap, y),
             size=size,
             autoselect=False,
             text_scale=1.5,
@@ -405,13 +435,11 @@ class ResourcePacksWindow(bui.MainWindow):
             textcolor=(1, 1, 1),
             on_activate_call=bui.WeakCallPartial(self._send_to_disabled),
         )
-        
-        x += self.MOVE_BUTTON_SIZE + 5
-        
+
         self._send_to_enabled_btn = bui.buttonwidget(
             parent=self._root_widget,
             label=bui.charstr(bui.SpecialChar.RIGHT_ARROW),
-            position=(x, y),
+            position=(center_x + col_gap, y),
             size=size,
             autoselect=False,
             text_scale=1.5,
@@ -420,7 +448,132 @@ class ResourcePacksWindow(bui.MainWindow):
             textcolor=(1, 1, 1),
             on_activate_call=bui.WeakCallPartial(self._send_to_enabled),
         )
-        
+
+        self._move_up_btn = bui.buttonwidget(
+            parent=self._root_widget,
+            label=bui.charstr(bui.SpecialChar.UP_ARROW),
+            position=(center_x - self.MOVE_BUTTON_SIZE - col_gap, row_2_y),
+            size=size,
+            autoselect=False,
+            text_scale=1.5,
+            button_type='square',
+            color=self.MOVE_BUTTON_DISABLED_COLOR,
+            textcolor=(1, 1, 1),
+            on_activate_call=bui.WeakCallPartial(self._move_enabled_pack, -1),
+        )
+
+        self._move_down_btn = bui.buttonwidget(
+            parent=self._root_widget,
+            label=bui.charstr(bui.SpecialChar.DOWN_ARROW),
+            position=(center_x + col_gap, row_2_y),
+            size=size,
+            autoselect=False,
+            text_scale=1.5,
+            button_type='square',
+            color=self.MOVE_BUTTON_DISABLED_COLOR,
+            textcolor=(1, 1, 1),
+            on_activate_call=bui.WeakCallPartial(self._move_enabled_pack, 1),
+        )
+
+        bui.textwidget(
+            parent=self._root_widget,
+            position=(center_x - (self.MOVE_BUTTON_SIZE * 0.5) - col_gap, y - 16),
+            size=(0, 0),
+            text='Disable',
+            color=(0.82, 0.72, 0.72),
+            scale=0.74,
+            h_align='center',
+            v_align='center',
+        )
+        bui.textwidget(
+            parent=self._root_widget,
+            position=(center_x + (self.MOVE_BUTTON_SIZE * 0.5) + col_gap, y - 16),
+            size=(0, 0),
+            text='Enable',
+            color=(0.72, 0.82, 0.72),
+            scale=0.74,
+            h_align='center',
+            v_align='center',
+        )
+        bui.textwidget(
+            parent=self._root_widget,
+            position=(center_x - (self.MOVE_BUTTON_SIZE * 0.5) - col_gap, row_2_y - 16),
+            size=(0, 0),
+            text='Up',
+            color=(0.82, 0.82, 0.75),
+            scale=0.74,
+            h_align='center',
+            v_align='center',
+        )
+        bui.textwidget(
+            parent=self._root_widget,
+            position=(center_x + (self.MOVE_BUTTON_SIZE * 0.5) + col_gap, row_2_y - 16),
+            size=(0, 0),
+            text='Down',
+            color=(0.82, 0.82, 0.75),
+            scale=0.74,
+            h_align='center',
+            v_align='center',
+        )
+
+    def _apply_filter(self) -> None:
+        """Refresh the list using the current filter text."""
+        if self._filter_widget is None:
+            return
+        self._filter_text = str(bui.textwidget(query=self._filter_widget)).strip().lower()
+        self.rebuild()
+
+    def _matches_filter(self, pack) -> bool:
+        """Return whether a pack matches the current filter query."""
+        if not self._filter_text:
+            return True
+        haystack = f'{pack.name} {pack.description}'.lower()
+        return self._filter_text in haystack
+
+    def _update_selection_state(self) -> None:
+        """Refresh the current-selection status text and button states."""
+
+        if self._selected_pack is None:
+            text = 'Select a pack to enable, disable, or reorder it.'
+            color = (0.7, 0.7, 0.78)
+        else:
+            text = f'Selected: {self._selected_pack.name}'
+            color = (1.0, 0.9, 0.65)
+
+        bui.textwidget(edit=self._selection_status, text=text, color=color)
+
+        selected_enabled = (
+            self._selected_pack is not None
+            and self._selected_pack in self._enabled_packs
+        )
+        selected_disabled = (
+            self._selected_pack is not None
+            and self._selected_pack not in self._enabled_packs
+        )
+
+        if selected_enabled:
+            current_index = self._enabled_packs.index(self._selected_pack)
+            can_move_up = current_index > 0
+            can_move_down = current_index < len(self._enabled_packs) - 1
+        else:
+            can_move_up = False
+            can_move_down = False
+
+        for btn, enabled in (
+            (self._send_to_disabled_btn, selected_enabled),
+            (self._send_to_enabled_btn, selected_disabled),
+            (self._move_up_btn, can_move_up),
+            (self._move_down_btn, can_move_down),
+        ):
+            bui.buttonwidget(
+                edit=btn,
+                color=(
+                    self.MOVE_BUTTON_COLOR
+                    if enabled
+                    else self.MOVE_BUTTON_DISABLED_COLOR
+                ),
+            )
+
     def rebuild(self) -> None:
         """Rebuild both resource-pack lists."""
 
@@ -429,7 +582,10 @@ class ResourcePacksWindow(bui.MainWindow):
         disabled_packs = [
             pack
             for pack in self._all_packs
-            if pack not in self._enabled_packs
+            if pack not in self._enabled_packs and self._matches_filter(pack)
+        ]
+        enabled_packs = [
+            pack for pack in self._enabled_packs if self._matches_filter(pack)
         ]
         no_packs = bui.Lstr(r='noPacksAvailableText')
         nothing_enabled = bui.Lstr(r='nothingEnabledYetText')
@@ -456,7 +612,7 @@ class ResourcePacksWindow(bui.MainWindow):
 
         self._rebuild_list(
             self._enabled_container,
-            self._enabled_packs,
+            enabled_packs,
             empty_text=nothing_enabled,
         )
 
@@ -468,6 +624,8 @@ class ResourcePacksWindow(bui.MainWindow):
             edit=self._enabled_label,
             text=enabled_len_text,
         )
+
+        self._update_selection_state()
 
     def _clear_containers(self) -> None:
         """Delete all existing pack buttons."""
@@ -634,6 +792,8 @@ class ResourcePacksWindow(bui.MainWindow):
                     ),
                 )
 
+        self._update_selection_state()
+
     def _send_to_enabled(self) -> None:
         """Enable the currently selected pack."""
 
@@ -645,8 +805,8 @@ class ResourcePacksWindow(bui.MainWindow):
         if pack not in self._enabled_packs:
             self._enabled_packs.append(pack)
         self._move_sound.play()
-        self._selected_pack = None
         self.rebuild()
+        self._update_selection_state()
 
     def _send_to_disabled(self) -> None:
         """Disable the currently selected pack."""
@@ -659,9 +819,28 @@ class ResourcePacksWindow(bui.MainWindow):
         if pack in self._enabled_packs:
             self._enabled_packs.remove(pack)
         self._move_sound.play()
-        self._selected_pack = None
         self.rebuild()
+        self._update_selection_state()
     
+    def _move_enabled_pack(self, direction: int) -> None:
+        """Move the currently selected enabled pack up or down in priority."""
+        pack = self._selected_pack
+        if pack is None or pack not in self._enabled_packs:
+            return
+
+        index = self._enabled_packs.index(pack)
+        new_index = index + direction
+        if new_index < 0 or new_index >= len(self._enabled_packs):
+            return
+
+        self._enabled_packs[index], self._enabled_packs[new_index] = (
+            self._enabled_packs[new_index],
+            self._enabled_packs[index],
+        )
+        self._move_sound.play()
+        self.rebuild()
+        self._update_selection_state()
+
     def _start_apply_thread(self):
         self._applying_window = ResourcePacksApplyingWindow()
         # ok, so music playing is bad so lets kill it for now
@@ -701,9 +880,25 @@ class ResourcePacksWindow(bui.MainWindow):
             )
             bui.screenmessage(error_text, color=(1, 0, 0))
             bui.getsound('error').play()
+            return
         for pack in self._enabled_packs:
-            apply_resource_pack(pack)
-            config.append(str(pack.namespace))
+            try:
+                apply_resource_pack(pack)
+                config.append(str(pack.namespace))
+            except Exception as exc:
+                bui.pushcall(
+                    bui.WeakCall(self._on_done, False),
+                    from_other_thread=True,
+                )
+                error_text = bui.Lstr(
+                    resource='failedToApplyResourcePack',
+                    subs=[
+                        ('${ERROR}', str(exc)),
+                    ],
+                )
+                bui.screenmessage(error_text, color=(1, 0, 0))
+                bui.pushcall(bui.getsound('error').play)
+                return
         bui.pushcall(
             self._on_done,
             from_other_thread=True,
