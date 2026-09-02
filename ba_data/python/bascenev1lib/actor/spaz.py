@@ -1491,6 +1491,8 @@ class Spaz(bs.Actor):
                             if bomb_type in 'impact' and self.shield:
                                 bomb.handlemessage(ExplodeMessage())
                                 mag *= 0.5
+                                # Give more impulse to make it look cooler.
+                                # Rigged, but whatever.
                                 self.node.handlemessage(
                                     'kick_back',
                                     ppos[0],
@@ -1519,7 +1521,10 @@ class Spaz(bs.Actor):
                             # SHOULD have exploded when we punched,
                             # go ahead and explode it ourselves
                             if bomb_type in ['impact', 'land_mine']:
-                                bomb.handlemessage(ExplodeMessage())
+                                # Add a slight delay so that the bomb has time to
+                                # register the punch and apply its own impulse. Should give us
+                                # room for a pretty snazzy mine punch without it blowing in our face.
+                                bs.timer(0.15, lambda: bomb.handlemessage(ExplodeMessage()))
                     bs.timer(0.05, check_bj)
                 else:
                     if len(self._punched_nodes) == 1:
