@@ -11,6 +11,7 @@ from threading import Thread
 from enum import Enum
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast, override
+import weakref
 
 from bauiv1lib.gather import GatherTab
 from mell.party_queue import PartyQueueHandler
@@ -1440,7 +1441,7 @@ class PublicGatherTab(GatherTab):
             party = party_vals_displayed[refresh_row]
             uirow = self._ui_rows[refresh_row]
             # Okay. Whatever.
-            self._ui_rows_by_party[id(party)] = uirow
+            self._ui_rows_by_party[id(party)] = weakref.ref(uirow)
 
             # For the first few seconds after getting our first
             # server-list, refresh only the top section of the list;
@@ -1895,6 +1896,8 @@ class PublicGatherTab(GatherTab):
         """Called when a party is clicked or otherwise activated."""
         self.save_state()
         uirow = self._ui_rows_by_party.get(id(party))
+        uirow = uirow() if uirow is not None else None
+        origin: tuple[float, float] | None = None
         if uirow is not None:
             # FIXME: Need to ask UIRow what it's 
             # main widget is instead of assuming.
