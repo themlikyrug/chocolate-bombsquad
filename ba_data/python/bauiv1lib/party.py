@@ -84,7 +84,10 @@ class PartyWindow(bui.Window):
             self._width + bg_extra_size, 
             self._height + bg_extra_size
         )
-        bg_pos = (-10, 5)
+        bg_pos = (
+            -bg_extra_size * 0.5, 
+            -bg_extra_size * 0.5
+        )
         self.background = bui.imagewidget(
             parent=self._root_widget,
             size=bg_size,
