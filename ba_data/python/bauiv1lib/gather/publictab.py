@@ -26,6 +26,247 @@ if TYPE_CHECKING:
 DEBUG_SERVER_COMMUNICATION = False
 DEBUG_PROCESSING = False
 
+PARTY_ENTRY_BUTTON_HEIGHT = 120
+
+class PartyEntryWindow(bui.Window):
+    """A window that handles a join and 
+    stats button for a party entry, triggered 
+    after clicking a party's button."""
+    def __init__(
+        self, 
+        party_entry: PartyEntry,
+        origin=(0, 0),
+    ):
+        self._party_entry = party_entry
+        # Generally just want a small window
+        # BUT wanna scale it up for smaller UI scales.
+        width = 360
+        height = 180
+        stats = party_entry.stats_addr
+        button_width = width * 0.88
+        button_height = 68
+        button_scale = 0.85
+        # If we already know we have stats from the get-go,
+        # increase our height. This seems somewhat stupid,
+        # but makes the UI more compact for us.
+        if stats:
+            height += button_height
+        uiscale = bui.app.ui_v1.uiscale
+        scale = (
+            1.8 if uiscale is bui.UIScale.SMALL
+            else 1.3 if uiscale is bui.UIScale.MEDIUM
+            else 1.0
+        )
+        super().__init__(
+            root_widget=bui.containerwidget(
+                size=(width, height),
+                stack_offset=origin,
+                scale_origin_stack_offset=origin,
+                scale=scale,
+                background=False,
+                # FIXME: find a way to inherit this somehow...?
+                toolbar_visibility=(
+                    'menu_tokens' 
+                    if uiscale is bui.UIScale.SMALL 
+                    else 'menu_full'
+                )
+            )
+        )
+        
+
+        extrasize = 60
+        bui.imagewidget(
+            parent=self._root_widget,
+            texture=bui.gettexture('softRect2'),
+            size=(width + extrasize, height + extrasize),
+            position=(-extrasize * 0.5, -extrasize * 0.5),
+            color=(0, 0, 0),
+            opacity=0.8,
+        )
+        
+        bui.containerwidget(
+            edit=self._root_widget,
+            transition='in_scale',
+        )
+        
+        self._back_button = btn = bui.buttonwidget(
+            parent=self._root_widget,
+            position=(-5, height - 35),
+            size=(64, 64),
+            scale=0.7,
+            autoselect=True,
+            texture=bui.gettexture('textClearButton'),
+            label='',
+            on_activate_call=self.close,
+            color=(0.6, 0.2, 0.2),
+            textcolor=(1, 1, 1),
+        )
+        bui.containerwidget(
+            edit=self._root_widget, 
+            cancel_button=btn
+        )
+        
+        bui.textwidget(
+            parent=self._root_widget,
+            text=bui.Lstr(value=party_entry.name),
+            position=(width * 0.5, height - 18),
+            size=(0, 0),
+            h_align='center',
+            v_align='center',
+            scale=1.35,
+            maxwidth=width - 80,
+            color=(1.0, 1.0, 0.95),
+            shadow=0.5,
+            glow_type='uniform',
+        )
+        
+        info_spacing = 65
+        plus = bui.app.plus
+        assert plus is not None
+        ping_good = plus.get_v1_account_misc_read_val('pingGood', 100)
+        ping_med = plus.get_v1_account_misc_read_val('pingMed', 500)
+        
+        if party_entry.ping:
+            ping_color = (
+                (0.1, 1.0, 0.2)
+                if party_entry.ping <= ping_good
+                else (1.0, 0.95, 0.1) 
+                if party_entry.ping <= ping_med 
+                else (1.0, 0.2, 0.2)
+            )
+            ping_text = f'{int(party_entry.ping)}ms'
+        else:
+            ping_color = (0.5, 0.5, 0.5)
+            ping_text = '-'
+        
+        # Label for the ping counter
+        counter_y = height - 42
+        bui.textwidget(
+            parent=self._root_widget,
+            text=bui.Lstr(resource='gatherWindow.pingText'),
+            position=((width * 0.5) - info_spacing, counter_y),
+            size=(0, 0),
+            h_align='center',
+            scale=0.65,
+            color=(0.7, 0.7, 0.7),
+            maxwidth=width - 70,
+        )
+        # Actual frickin counter
+        bui.textwidget(
+            parent=self._root_widget,
+            text=ping_text,
+            position=((width * 0.5) - info_spacing, counter_y - 14),
+            size=(0, 0),
+            h_align='center',
+            scale=1.25,
+            color=ping_color,
+            shadow=0.4,
+            glow_type='uniform',
+            maxwidth=width - (70 + info_spacing),
+        )
+        
+        # Label for the party size
+        bui.textwidget(
+            parent=self._root_widget,
+            text=bui.Lstr(resource='gatherWindow.partySizeText'),
+            position=((width * 0.5) + info_spacing, counter_y),
+            size=(0, 0),
+            h_align='center',
+            scale=0.65,
+            color=(0.7, 0.7, 0.7),
+            maxwidth=width - 70,
+        )
+        # Actual frickin counter
+        bui.textwidget(
+            parent=self._root_widget,
+            text=f'{party_entry.size}/{party_entry.size_max}',
+            position=((width * 0.5) + info_spacing, counter_y - 14),
+            size=(0, 0),
+            h_align='center',
+            scale=1.25,
+            color=(0.2, 0.8, 1.0),
+            shadow=0.4,
+            glow_type='uniform',
+            maxwidth=width - (70 + info_spacing),
+        )
+        textscale = 1.25
+        v = -15 + (button_height * 0.5) * button_scale
+        
+        self._join_btn = bui.buttonwidget(
+            parent=self._root_widget,
+            label=bui.Lstr(resource='gatherWindow.manualConnectText'),
+            position=(width * 0.5 - (button_width * 0.5) * button_scale, v),
+            size=(button_width, button_height),
+            scale=button_scale,
+            icon=bui.gettexture('startButton'),
+            text_scale=textscale,
+            iconscale=textscale * 1.1,
+            on_activate_call=self._join,
+            autoselect=True,
+            texture=bui.gettexture('softRect2'),
+            color=(0.15, 0.65, 0.25),
+            textcolor=(1.0, 1.0, 1.0),
+        )
+        
+        bui.containerwidget(
+            edit=self._root_widget,
+            start_button=self._join_btn,
+        )
+        
+        stats = party_entry.stats_addr
+        if stats:
+            plus = bui.app.plus
+            assert plus is not None
+            url = party_entry.stats_addr.replace(
+                '${ACCOUNT}',
+                plus.get_v1_account_misc_read_val_2(
+                    'resolvedAccountID', 'UNKNOWN'
+                ),
+            )
+            v += (button_height + 12) * button_scale
+            self._stats_btn = bui.buttonwidget(
+                parent=self._root_widget,
+                label=bui.Lstr(resource='statsText'),
+                position=(width * 0.5 - (button_width * 0.5) * button_scale, v),
+                size=(button_width, button_height),
+                scale=button_scale,
+                color=(0.15, 0.35, 0.75),
+                textcolor=(0.9, 0.95, 1.0),
+                icon=bui.gettexture('cuteSpaz'),
+                text_scale=textscale,
+                iconscale=textscale * 1.1,
+                on_activate_call=bui.CallPartial(bui.open_url, url),
+                autoselect=True,
+                texture=bui.gettexture('softRect2'),
+            )
+
+    def _join(self):
+        # Let the queue handle it.
+        party = self._party_entry
+        data = {
+            'address': party.address,
+            'port': party.port,
+            'name': party.name,
+            'queue_id': party.queue,
+            'size': (party.size, party.size_max),
+        }
+        bui.app._party_queue_handler = PartyQueueHandler(data)
+        # Close too.
+        self.close()
+    
+    def close(self):
+        # No-op if we're already closing.
+        if (
+            not self._root_widget 
+            or self._root_widget.transitioning_out
+        ):
+            return
+        bui.containerwidget(
+            edit=self._root_widget,
+            transition='out_scale',
+        )
+        
+
 
 class SubTabType(Enum):
     """Available sub-tabs."""
@@ -78,7 +319,8 @@ class UIRow:
         self._name_widget: bui.Widget | None = None
         self._size_widget: bui.Widget | None = None
         self._ping_widget: bui.Widget | None = None
-        self._stats_button: bui.Widget | None = None
+        self._button_widget: bui.Widget | None = None
+        self._stats_widget: bui.Widget | None = None
 
     def __del__(self) -> None:
         self._clear()
@@ -88,7 +330,8 @@ class UIRow:
             self._name_widget,
             self._size_widget,
             self._ping_widget,
-            self._stats_button,
+            self._button_widget,
+            self._stats_widget,
         ]:
             if widget:
                 widget.delete()
@@ -122,14 +365,21 @@ class UIRow:
         ping_med = plus.get_v1_account_misc_read_val('pingMed', 500)
 
         self._clear()
-        hpos = 20
-        vpos = sub_scroll_height - lineheight * index - 50
-        self._name_widget = bui.textwidget(
-            text=bui.Lstr(value=party.name),
+        hpos = 0
+        button_width = sub_scroll_width - 5
+        button_height = PARTY_ENTRY_BUTTON_HEIGHT
+        button_spacing = button_height + 2
+        top_of_btn = (button_height - 100)
+        # i GUESS bro
+        vpos = (sub_scroll_height - (button_height - 30)) - (button_spacing * index)
+        main = self._button_widget = bui.buttonwidget(
             parent=columnwidget,
-            size=(sub_scroll_width * 0.46, 20),
-            position=(0 + hpos, 4 + vpos),
-            selectable=True,
+            position=(
+                hpos, 
+                vpos - (button_height * 0.5),
+            ),
+            size=(button_width, button_height),
+            label='',
             on_select_call=bui.WeakCallStrict(
                 tab.set_public_party_selection,
                 Selection(party.get_key(), SelectionComponent.NAME),
@@ -137,22 +387,33 @@ class UIRow:
             on_activate_call=bui.WeakCallStrict(
                 tab.on_public_party_activate, party
             ),
-            click_activate=True,
-            maxwidth=sub_scroll_width * 0.45,
-            corner_scale=1.4,
+        )
+        name = bui.textwidget(
+            parent=columnwidget,
+            text=bui.Lstr(value=party.name),
+            size=(0, 0),
+            scale=1.2,
+            position=(50 + hpos, vpos + top_of_btn),
+            maxwidth=button_width * 0.8,
             autoselect=True,
             color=(1, 1, 1, 0.3 if party.ping is None else 1.0),
             h_align='left',
             v_align='center',
+            draw_controller=main,
         )
         # These are popping in and out too chaotically to try and do
         # auto-select-save/restore, so we don't supply ids for them. We
         # need to suppress the warning that comes with that though.
-        bui.widget(edit=self._name_widget, allow_preserve_selection=False)
+        bui.widget(edit=main, allow_preserve_selection=False)
 
         bui.widget(
-            edit=self._name_widget,
+            edit=main,
             left_widget=join_text,
+            show_buffer_top=64.0,
+            show_buffer_bottom=64.0,
+        )
+        bui.widget(
+            edit=name,
             show_buffer_top=64.0,
             show_buffer_bottom=64.0,
         )
@@ -160,76 +421,41 @@ class UIRow:
             party.get_key(), SelectionComponent.NAME
         ):
             bui.containerwidget(
-                edit=columnwidget, selected_child=self._name_widget
+                edit=columnwidget, 
+                selected_child=main
             )
-        if party.stats_addr:
-            url = party.stats_addr.replace(
-                '${ACCOUNT}',
-                plus.get_v1_account_misc_read_val_2(
-                    'resolvedAccountID', 'UNKNOWN'
-                ),
-            )
-            # self._stats_button = bui.buttonwidget(
-                # color=(0.3, 0.6, 0.94),
-                # textcolor=(1.0, 1.0, 1.0),
-                # label=bui.Lstr(resource='statsText'),
-                # parent=columnwidget,
-                # autoselect=True,
-                # on_activate_call=bui.CallStrict(bui.open_url, url),
-                # on_select_call=bui.WeakCallStrict(
-                    # tab.set_public_party_selection,
-                    # Selection(party.get_key(), SelectionComponent.STATS_BUTTON),
-                # ),
-                # size=(120, 40),
-                # position=(sub_scroll_width - 270.0, 1 + vpos),
-                # scale=0.9,
-            # )
-            self._stats_button = None
-            if self._stats_button:
-                # These are popping in and out too chaotically to try and do
-                # auto-select-save/restore, so we don't supply ids for them.
-                # We need to suppress the warning that comes with that
-                # though.
-                bui.widget(edit=self._stats_button, allow_preserve_selection=False)
 
-            if existing_selection == Selection(
-                party.get_key(), SelectionComponent.STATS_BUTTON
-            ):
-                bui.containerwidget(
-                    edit=columnwidget, selected_child=self._stats_button
-                )
-
-        self._size_widget = bui.textwidget(
+        size = bui.textwidget(
             text=str(party.size) + '/' + str(party.size_max),
             parent=columnwidget,
             size=(0, 0),
-            position=(sub_scroll_width - 130, 20 + vpos),
-            scale=0.8,
+            position=(hpos + (button_width - 140), vpos + top_of_btn),
+            scale=0.9,
             color=(0.8, 0.8, 0.8),
             h_align='right',
             v_align='center',
+            draw_controller=main,
         )
 
         if index == 0:
-            bui.widget(edit=self._name_widget, up_widget=filter_text)
-            if self._stats_button:
-                bui.widget(edit=self._stats_button, up_widget=filter_text)
+            bui.widget(edit=name, up_widget=filter_text)
 
-        self._ping_widget = bui.textwidget(
+        ping = bui.textwidget(
             parent=columnwidget,
             size=(0, 0),
-            position=(sub_scroll_width - 30, 20 + vpos),
-            scale=0.8,
+            position=(hpos + (button_width - 60), vpos + top_of_btn),
+            scale=0.9,
             h_align='right',
             v_align='center',
+            draw_controller=main,
         )
         if party.ping is None:
             bui.textwidget(
-                edit=self._ping_widget, text='-', color=(0.5, 0.5, 0.5)
+                edit=ping, text='-', color=(0.5, 0.5, 0.5)
             )
         else:
             bui.textwidget(
-                edit=self._ping_widget,
+                edit=ping,
                 text=f'{int(party.ping)}ms',
                 color=(
                     (0, 1, 0)
@@ -237,7 +463,35 @@ class UIRow:
                     else (1, 1, 0) if party.ping <= ping_med else (1, 0, 0)
                 ),
             )
-
+        stats = party.stats_addr
+        # NOTE: We don't normally need this since
+        # the stats button is in the party entry window, but
+        # this makes things look less empty.
+        stats_w = None
+        if stats:
+            url = party.stats_addr.replace(
+                '${ACCOUNT}',
+                plus.get_v1_account_misc_read_val_2(
+                    'resolvedAccountID', 'UNKNOWN'
+                ),
+            )
+            stats_w = bui.textwidget(
+                parent=columnwidget,
+                text=bui.Lstr(value=url),
+                size=(0, 0),
+                position=(50 + hpos, vpos + (top_of_btn - 35)),
+                maxwidth=button_width * 0.8,
+                autoselect=True,
+                color=(0.8, 0.8, 0.8),
+                h_align='left',
+                v_align='center',
+                draw_controller=main,
+            )
+        # Oh Yeah We Do Need To Save These
+        self._name_widget = name
+        self._ping_widget = ping
+        self._size_widget = size
+        self._stats_widget = stats_w
         party.clean_display_index = index
 
 
@@ -412,6 +666,7 @@ class PublicGatherTab(GatherTab):
         self._host_status_text: bui.Widget | None = None
         self._signed_in = False
         self._ui_rows: list[UIRow] = []
+        self._ui_rows_by_party: dict[int, UIRow] = {}
         self._refresh_ui_row = 0
         self._have_user_selected_row = False
         self._first_valid_server_list_time: float | None = None
@@ -1146,8 +1401,8 @@ class PublicGatherTab(GatherTab):
 
         assert self._join_sub_scroll_width is not None
         sub_scroll_width = self._join_sub_scroll_width
-        lineheight = 42
-        sub_scroll_height = lineheight * len(self._parties_displayed) + 50
+        lineheight = PARTY_ENTRY_BUTTON_HEIGHT
+        sub_scroll_height = lineheight * (len(self._parties_displayed) + 1)
         bui.containerwidget(
             edit=columnwidget, size=(sub_scroll_width, sub_scroll_height)
         )
@@ -1182,6 +1437,10 @@ class PublicGatherTab(GatherTab):
             if refresh_row >= len(self._ui_rows):
                 self._ui_rows.append(UIRow())
                 refresh_row = len(self._ui_rows) - 1
+            party = party_vals_displayed[refresh_row]
+            uirow = self._ui_rows[refresh_row]
+            # Okay. Whatever.
+            self._ui_rows_by_party[id(party)] = uirow
 
             # For the first few seconds after getting our first
             # server-list, refresh only the top section of the list;
@@ -1191,10 +1450,10 @@ class PublicGatherTab(GatherTab):
                 if time.time() - self._first_valid_server_list_time < 4.0:
                     if refresh_row > 40:
                         refresh_row = 0
-
-            self._ui_rows[refresh_row].update(
+            # Might aswell change this.
+            uirow.update(
                 refresh_row,
-                party_vals_displayed[refresh_row],
+                party,
                 sub_scroll_width=sub_scroll_width,
                 sub_scroll_height=sub_scroll_height,
                 lineheight=lineheight,
@@ -1635,15 +1894,15 @@ class PublicGatherTab(GatherTab):
     def on_public_party_activate(self, party: PartyEntry) -> None:
         """Called when a party is clicked or otherwise activated."""
         self.save_state()
-
-        data = {
-            'address': party.address,
-            'port': party.port,
-            'name': party.name,
-            'queue_id': party.queue,
-            'size': (party.size, party.size_max),
-        }
-        bui.app._party_queue_handler = PartyQueueHandler(data)
+        uirow = self._ui_rows_by_party.get(id(party))
+        if uirow is not None:
+            # FIXME: Need to ask UIRow what it's 
+            # main widget is instead of assuming.
+            origin = uirow._button_widget.get_screen_space_center()
+        PartyEntryWindow(
+            party_entry=party,
+            origin=origin
+        )
 
     def set_public_party_selection(self, sel: Selection) -> None:
         """Set the sel."""
