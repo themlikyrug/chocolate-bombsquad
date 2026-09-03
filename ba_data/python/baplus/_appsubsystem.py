@@ -43,8 +43,6 @@ class PlusAppSubsystem(AppSubsystem):
         """:meta private:"""
         _baplus.on_app_loading()
         self.accounts.on_app_loading()
-        from mell.startups import GameStartup
-        GameStartup()
 
     @staticmethod
     def add_v1_account_transaction(

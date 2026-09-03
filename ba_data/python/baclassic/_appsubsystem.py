@@ -233,6 +233,8 @@ class ClassicAppSubsystem(babase.AppSubsystem):
         babase.handle_leftover_v1_cloud_log_file()
 
         self.accounts.on_app_loading()
+        from mell.startups import GameStartup
+        GameStartup()
 
     @override
     def on_app_suspend(self) -> None:
