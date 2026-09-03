@@ -3,22 +3,37 @@ import os
 import traceback
 import datetime
 import shutil
+import time
+import threading
 from pathlib import Path
 from mell.resource_packs import (
     ResourcePack, 
     apply_resource_pack, 
     clear_resource_packs,
 )
-
+classicappmode_wait_callbacks = []
+def classicappmode_wait_thread():
+    import bascenev1 as bs
+    import babase as ba
+    try:
+        bs.get_connection_to_host_info_2()
+        for callback in classicappmode_wait_callbacks:
+            callback()
+    except Exception as exc:
+        ba.apptimer(1, classicappmode_wait_thread)
+        
 class CoreStartup():
     def __init__(self):
-        externals_dir = os.path.join(
-            os.path.dirname(__file__).replace('\\mell', ''),
-            'externals'
-        )
+        # NOTE: EXTERNALS ARE NOT NEEDED ANYMORE!!!
+        # (well, for now)
+        
+        # externals_dir = os.path.join(
+        #     os.path.dirname(__file__).replace('\\mell', ''),
+        #     'externals'
+        # )
 
-        if externals_dir not in sys.path:
-            sys.path.insert(0, externals_dir)
+        # if externals_dir not in sys.path:
+        #     sys.path.insert(0, externals_dir)
         
         def my_global_exception_hook(exc_type, exc_value, exc_traceback):
             import bauiv1 as bui
@@ -38,11 +53,13 @@ class CoreStartup():
 
 class GameStartup():
     def __init__(self):
+        global classicappmode_wait_callbacks
         import babase as ba
         import bascenev1 as bs
         import bauiv1 as bui
         from bascenev1lib.mainmenu import MainMenuSession
-        
+        from .discordrp_handler import RichPresence
+        # Do some module imports for the devs.
         def auto_module_import():
             globals = sys.modules['__main__'].__dict__
             globals['ba'] = ba
@@ -52,10 +69,6 @@ class GameStartup():
             globals['gp'] = lambda: bs.getactivity().players
             globals['gs'] = bs.getsession
         auto_module_import()
-        def start_rpc():
-            from .discordrp_handler import RichPresence
-            RichPresence()
-        ba.apptimer(3, start_rpc)
         # make sure some folders and lists exist,
         # create if otherwise
         mods_dir = Path(bui.app.env.python_directory_user)
@@ -92,7 +105,9 @@ class GameStartup():
             )
             ba.apptimer(2, ba.CallPartial(ba.screenmessage, text, color=(1, 0, 0)))
             ba.apptimer(2, bui.getsound('error').play)
-        # issue a restart on our assets
-        bui.app.classic.run_media_reload_benchmark()
-        # FINALLY, launch the main menu
-        ba.apptimer(2, bs.app.classic.return_to_main_menu_session_gracefully)
+            
+        # Start the classic app mode start callbacks.
+        classicappmode_wait_callbacks.append(RichPresence)
+        return_to_menu = bs.app.classic.return_to_main_menu_session_gracefully
+        classicappmode_wait_callbacks.append(return_to_menu)
+        classicappmode_wait_thread()
