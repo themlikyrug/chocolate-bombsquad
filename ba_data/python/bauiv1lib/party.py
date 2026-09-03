@@ -6,13 +6,15 @@ from __future__ import annotations
 
 import math
 import logging
+import json
+import queue
+import threading
 from typing import TYPE_CHECKING, cast
+from urllib.parse import quote
+from urllib.request import urlopen
 
 import bauiv1 as bui
 import bascenev1 as bs
-import googletrans
-import asyncio
-import threading
 from bauiv1lib.popup import PopupMenuWindow
 
 if TYPE_CHECKING:
@@ -20,30 +22,87 @@ if TYPE_CHECKING:
 
     from bauiv1lib.popup import PopupWindow
 
-_loop = asyncio.new_event_loop()
+TRANSLATION_LANGUAGES = {
+    'af': 'Afrikaans', 'sq': 'Albanian', 'am': 'Amharic', 'ar': 'Arabic',
+    'hy': 'Armenian', 'az': 'Azerbaijani', 'eu': 'Basque', 'be': 'Belarusian',
+    'bn': 'Bengali', 'bs': 'Bosnian', 'bg': 'Bulgarian', 'ca': 'Catalan',
+    'ceb': 'Cebuano', 'zh-CN': 'Chinese (Simplified)',
+    'zh-TW': 'Chinese (Traditional)', 'co': 'Corsican', 'hr': 'Croatian',
+    'cs': 'Czech', 'da': 'Danish', 'nl': 'Dutch', 'en': 'English',
+    'eo': 'Esperanto', 'et': 'Estonian', 'fi': 'Finnish', 'fr': 'French',
+    'fy': 'Frisian', 'gl': 'Galician', 'ka': 'Georgian', 'de': 'German',
+    'el': 'Greek', 'gu': 'Gujarati', 'ht': 'Haitian Creole',
+    'ha': 'Hausa', 'haw': 'Hawaiian', 'he': 'Hebrew', 'hi': 'Hindi',
+    'hmn': 'Hmong', 'hu': 'Hungarian', 'is': 'Icelandic', 'ig': 'Igbo',
+    'id': 'Indonesian', 'ga': 'Irish', 'it': 'Italian', 'ja': 'Japanese',
+    'jv': 'Javanese', 'kn': 'Kannada', 'kk': 'Kazakh', 'km': 'Khmer',
+    'ko': 'Korean', 'ku': 'Kurdish', 'ky': 'Kyrgyz', 'lo': 'Lao',
+    'la': 'Latin', 'lv': 'Latvian', 'lt': 'Lithuanian', 'lb': 'Luxembourgish',
+    'mk': 'Macedonian', 'mg': 'Malagasy', 'ms': 'Malay', 'ml': 'Malayalam',
+    'mt': 'Maltese', 'mi': 'Maori', 'mr': 'Marathi', 'mn': 'Mongolian',
+    'my': 'Myanmar (Burmese)', 'ne': 'Nepali', 'no': 'Norwegian',
+    'ny': 'Nyanja', 'or': 'Odia', 'ps': 'Pashto', 'fa': 'Persian',
+    'pl': 'Polish', 'pt': 'Portuguese', 'pa': 'Punjabi', 'ro': 'Romanian',
+    'ru': 'Russian', 'sm': 'Samoan', 'gd': 'Scots Gaelic', 'sr': 'Serbian',
+    'st': 'Sesotho', 'sn': 'Shona', 'sd': 'Sindhi', 'si': 'Sinhala',
+    'sk': 'Slovak', 'sl': 'Slovenian', 'so': 'Somali', 'es': 'Spanish',
+    'su': 'Sundanese', 'sw': 'Swahili', 'sv': 'Swedish', 'tl': 'Tagalog',
+    'tg': 'Tajik', 'ta': 'Tamil', 'tt': 'Tatar', 'te': 'Telugu',
+    'th': 'Thai', 'tr': 'Turkish', 'tk': 'Turkmen', 'uk': 'Ukrainian',
+    'ur': 'Urdu', 'ug': 'Uyghur', 'uz': 'Uzbek', 'vi': 'Vietnamese',
+    'cy': 'Welsh', 'xh': 'Xhosa', 'yi': 'Yiddish', 'yo': 'Yoruba',
+    'zu': 'Zulu',
+}
+
+_translation_queue: queue.Queue[tuple[str, str, object]] = queue.Queue()
+_translation_pending: dict[tuple[str, str], list[object]] = {}
+_translation_lock = threading.Lock()
+
+
+def _translate_message(msg: str, dest: str) -> str:
+    url = (
+        'https://translate.googleapis.com/translate_a/single?client=gtx'
+        f'&sl=auto&tl={quote(dest)}&dt=t&q={quote(msg)}'
+    )
+    with urlopen(url, timeout=10) as response:
+        data = json.load(response)
+    return ''.join(part[0] for part in data[0] if part[0])
+
+
+def _translation_worker() -> None:
+    while True:
+        msg, dest, callback = _translation_queue.get()
+        key = (msg, dest)
+        try:
+            text = _translate_message(msg, dest)
+        except Exception as exc:
+            logging.warning('Failed to translate chat message: %s', exc)
+            text = msg
+        with _translation_lock:
+            callbacks = _translation_pending.pop(key, [callback])
+        for pending_callback in callbacks:
+            bs.pushcall(
+                lambda value=text, cb=pending_callback: cb(msg=value),
+                from_other_thread=True,
+            )
+        _translation_queue.task_done()
 
 def send_translated_message(msg, done_callback: bui.Call):
     bs.chatmessage(msg)
     if done_callback:
         done_callback()
 
-def translate_async(msg: str, dest: str, callback):
-    def worker():
-        try:
-            translator = googletrans.Translator()
-            result = asyncio.run(translator.translate(msg, dest=dest))
-            text = result.text
-        except Exception as exc:
-            text = None
-            print(f'Failed to translate: {exc}')
-        bs.pushcall(
-            lambda: callback(msg=text),
-            from_other_thread=True,
-        )
-    threading.Thread(
-        target=worker,
-        daemon=False,
-    ).start()
+def translate_async(msg: str, dest: str, callback) -> None:
+    key = (msg, dest)
+    with _translation_lock:
+        if key in _translation_pending:
+            _translation_pending[key].append(callback)
+            return
+        _translation_pending[key] = [callback]
+    _translation_queue.put((msg, dest, callback))
+
+
+threading.Thread(target=_translation_worker, daemon=True).start()
 
 class PartyWindow(bui.Window):
     """Party list/chat window."""
@@ -310,6 +369,10 @@ class PartyWindow(bui.Window):
             selectable=True,
         )
         if self._translate_from:
+            if ':' not in msg:
+                self._chat_texts.append(txt)
+                bui.containerwidget(edit=self._columnwidget, visible_child=txt)
+                return
             user, msg = msg.split(':', 1)
             if not getattr(bui.app, 'translated_cache', None):
                 bui.app.translated_cache = {}
@@ -357,7 +420,7 @@ class PartyWindow(bui.Window):
         assert bui.app.classic is not None
         uiscale = bui.app.ui_v1.uiscale
 
-        lang_dict = googletrans.LANGUAGES
+        lang_dict = TRANSLATION_LANGUAGES
         choices = [None]
         choices_display = [bui.Lstr(r='offText')]
         for key in lang_dict.keys():
