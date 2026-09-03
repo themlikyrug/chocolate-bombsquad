@@ -251,6 +251,8 @@ class PartyEntryWindow(bui.Window):
             'queue_id': party.queue,
             'size': (party.size, party.size_max),
         }
+        if bui.app._party_queue_handler:
+            bui.app._party_queue_handler._clear_actor()
         bui.app._party_queue_handler = PartyQueueHandler(data)
         # Close too.
         self.close()
