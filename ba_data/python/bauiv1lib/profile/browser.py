@@ -12,6 +12,119 @@ import bascenev1 as bs
 if TYPE_CHECKING:
     from typing import Any, ClassVar
 
+class NewProfileWindow(bui.Window):
+    """A window asking the user if they want to 
+    clone the selected profile or start from scratch."""
+    def __init__(self, profile_name: str | None = None):
+        # pylint: disable=too-many-locals
+        from bauiv1lib.profile.edit import EditProfileWindow
+        self._profile_name = profile_name
+        uiscale = bui.app.ui_v1.uiscale
+        width = 400.0 if uiscale is bui.UIScale.SMALL else 350.0
+        height = 200.0 if uiscale is bui.UIScale.SMALL else 180.0
+        super().__init__(
+            root_widget=bui.containerwidget(
+                size=(width, height),
+                transition='in_scale',
+                scale=(
+                    2.7
+                    if uiscale is bui.UIScale.SMALL
+                    else 1.7 if uiscale is bui.UIScale.MEDIUM else 1.3
+                ),
+                darken_behind=True,
+                on_outside_click_call=self.close,
+            )
+        )
+        self._back_button = btn = bui.buttonwidget(
+            parent=self._root_widget,
+            position=(20, height - 45),
+            size=(64, 64),
+            scale=0.5,
+            autoselect=True,
+            texture=bui.gettexture('textClearButton'),
+            label='',
+            on_activate_call=self.close,
+            color=(0.6, 0.2, 0.2),
+            textcolor=(1, 1, 1),
+        )
+        bui.containerwidget(
+            edit=self._root_widget, 
+            cancel_button=btn
+        )
+        bui.textwidget(
+            parent=self._root_widget,
+            position=(width * 0.5, height - 30),
+            size=(0, 0),
+            text=bui.Lstr(resource='newProfileWindow.titleText'),
+            color=bui.app.ui_v1.title_color,
+            maxwidth=width * 0.9,
+            scale=0.7,
+            h_align='center',
+            v_align='center',
+        )
+        # text asking the player whether they're 
+        # gonna clone or start from scratch
+        brightness = 1.2
+        # Wow. Okay.
+        import bascenev1 as bs
+        bui.textwidget(
+            parent=self._root_widget,
+            position=(width * 0.5, height - 70),
+            size=(0, 0),
+            text=bui.Lstr(resource='newProfileWindow.queryText'),
+            color=bs.Vec3(bui.app.ui_v1.title_color) * brightness,
+            maxwidth=width * 0.9,
+            scale=0.8,
+            h_align='center',
+            v_align='center',
+        )
+        textscale = 0.6
+        button_width = 140
+        button_spacing = 15
+        button_amount = 2
+        total_button_width = button_amount * button_width + (button_amount - 1) * button_spacing
+        bui.buttonwidget(
+            parent=self._root_widget,
+            position=(
+                width * 0.5 - total_button_width * 0.5, 
+                20
+            ),
+            size=(button_width, 50),
+            label=bui.Lstr(resource='newProfileWindow.cloneButtonText'),
+            text_scale=textscale,
+            on_activate_call=lambda: self._do_new(clone=True),
+        )
+        bui.buttonwidget(
+            parent=self._root_widget,
+            position=(
+                width * 0.5 - total_button_width * 0.5 + button_width + button_spacing, 
+                20
+            ),
+            size=(button_width, 50),
+            label=bui.Lstr(resource='newProfileWindow.scratchButtonText'),
+            text_scale=textscale,
+            on_activate_call=lambda: self._do_new(clone=False),
+        )
+
+    def close(self):
+        bui.containerwidget(
+            edit=self._root_widget, 
+            transition='out_scale'
+        )
+
+    def _do_new(self, clone: bool) -> None:
+        from bauiv1lib.profile.edit import EditProfileWindow
+        profile = None
+        if clone:
+            profile = self._profile_name
+        self.close()
+        window = bui.app.ui_v1.get_main_window()
+        window.main_window_replace(
+            lambda: EditProfileWindow(
+                existing_profile=profile, 
+                clone=clone
+            )
+        )
 
 class ProfileBrowserWindow(bui.MainWindow):
     """Window for browsing player profiles."""
@@ -111,59 +224,43 @@ class ProfileBrowserWindow(bui.MainWindow):
         )
 
         scroll_height = self._height - 140.0
-        self._scroll_width = self._width - (188 + x_inset * 2)
-        v = self._height - 84.0
-        h = 50 + x_inset
+        self._scroll_width = self._width - 60
         b_color = (0.6, 0.53, 0.63)
-
-        scl = (
-            1.055
-            if uiscale is bui.UIScale.SMALL
-            else 1.18 if uiscale is bui.UIScale.MEDIUM else 1.3
-        )
-        v -= 70.0 * scl
+        button_size = 40
+        v = (self._height - 30) - (button_size * 0.5)
+        h = (self._width - 50) - (button_size * 0.5)
+        if uiscale is bui.UIScale.SMALL:
+            h -= 165
+            v -= 15
+            self._scroll_width -= 50
+        
         self._new_button = bui.buttonwidget(
             parent=self._root_widget,
             id=f'{self.main_window_id_prefix}|new',
             position=(h, v),
-            size=(80, 66.0 * scl),
+            size=(button_size, button_size),
             on_activate_call=self._new_profile,
             color=b_color,
             button_type='square',
             autoselect=True,
             textcolor=(0.75, 0.7, 0.8),
-            text_scale=0.7,
-            label=bui.Lstr(resource=f'{self._r}.newButtonText'),
+            iconscale=1.2,
+            icon=bui.gettexture('cuteSpaz'),
         )
-        v -= 70.0 * scl
+        h -= button_size + 10
         self._edit_button = bui.buttonwidget(
             parent=self._root_widget,
             id=f'{self.main_window_id_prefix}|edit',
             position=(h, v),
-            size=(80, 66.0 * scl),
+            size=(button_size, button_size),
             on_activate_call=self._edit_profile,
             color=b_color,
             button_type='square',
             autoselect=True,
             textcolor=(0.75, 0.7, 0.8),
-            text_scale=0.7,
-            label=bui.Lstr(resource=f'{self._r}.editButtonText'),
+            iconscale=1.2,
+            icon=bui.gettexture('startButton'),
         )
-        v -= 70.0 * scl
-        self._delete_button = bui.buttonwidget(
-            parent=self._root_widget,
-            id=f'{self.main_window_id_prefix}|delete',
-            position=(h, v),
-            size=(80, 66.0 * scl),
-            on_activate_call=self._delete_profile,
-            color=b_color,
-            button_type='square',
-            autoselect=True,
-            textcolor=(0.75, 0.7, 0.8),
-            text_scale=0.7,
-            label=bui.Lstr(resource=f'{self._r}.deleteButtonText'),
-        )
-
         v = self._height - 87
 
         bui.textwidget(
@@ -181,7 +278,10 @@ class ProfileBrowserWindow(bui.MainWindow):
         self._scrollwidget = bui.scrollwidget(
             parent=self._root_widget,
             highlight=False,
-            position=(140 + x_inset, v - scroll_height),
+            position=(
+                ((self._width * 0.5) + x_inset) - (self._scroll_width * 0.5), 
+                v - scroll_height
+            ),
             size=(self._scroll_width, scroll_height),
         )
         bui.widget(
@@ -235,35 +335,6 @@ class ProfileBrowserWindow(bui.MainWindow):
     #         self._selected_profile = pval
 
     def _new_profile(self) -> None:
-        # pylint: disable=cyclic-import
-        from bauiv1lib.profile.edit import EditProfileWindow
-        from bauiv1lib.purchase import PurchaseWindow
-
-        # No-op if we're not the in-control main window.
-        if not self.main_window_has_control():
-            return
-
-        plus = bui.app.plus
-        assert plus is not None
-
-        # Limit to a handful profiles if they don't have pro-options.
-        max_non_pro_profiles = plus.get_v1_account_misc_read_val('mnpp', 5)
-        assert self._profiles is not None
-        assert bui.app.classic is not None
-        if (
-            bool(False)  # Phasing out pro.
-            and not bui.app.classic.accounts.have_pro_options()
-            and len(self._profiles) >= max_non_pro_profiles
-        ):
-            PurchaseWindow(
-                items=['pro'],
-                header_text=bui.Lstr(
-                    resource='unlockThisProfilesText',
-                    subs=[('${NUM}', str(max_non_pro_profiles))],
-                ),
-            )
-            return
-
         # Clamp at 100 profiles (otherwise the server will and that's less
         # elegant looking).
         if len(self._profiles) > 100:
@@ -278,10 +349,10 @@ class ProfileBrowserWindow(bui.MainWindow):
             )
             bui.getsound('error').play()
             return
-
-        self.main_window_replace(
-            lambda: EditProfileWindow(existing_profile=None)
+        NewProfileWindow(
+            profile_name=type(self).selected_profile,
         )
+
 
     def _delete_profile(self) -> None:
         # pylint: disable=cyclic-import

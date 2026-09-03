@@ -34,6 +34,7 @@ class EditProfileWindow(
         existing_profile: str | None,
         transition: str | None = 'in_right',
         origin_widget: bui.Widget | None = None,
+        clone: bool = False,
     ):
         # FIXME: Tidy this up a bit.
         # pylint: disable=too-many-branches
@@ -45,8 +46,12 @@ class EditProfileWindow(
 
         plus = bui.app.plus
         assert plus is not None
-
-        self._existing_profile = existing_profile
+        # WANT to grab everything from the profile,
+        # but in the case this is a clone don't replace everything.
+        if clone:
+            self._existing_profile = None
+        else:
+            self._existing_profile = existing_profile
         self._r = 'editProfileWindow'
         self._spazzes: list[str] = []
         self._icon_textures: list[bui.Texture] = []
@@ -110,7 +115,7 @@ class EditProfileWindow(
             size=(0, 0),
             text=(
                 bui.Lstr(resource=f'{self._r}.titleNewText')
-                if existing_profile is None
+                if self._existing_profile is None
                 else bui.Lstr(resource=f'{self._r}.titleEditText')
             ),
             color=bui.app.ui_v1.title_color,
@@ -123,7 +128,7 @@ class EditProfileWindow(
         # Make a list of spaz icons.
         self.refresh_characters()
         profile = bui.app.config.get('Player Profiles', {}).get(
-            self._existing_profile, {}
+            existing_profile, {}
         )
 
         if 'global' in profile:
@@ -155,7 +160,7 @@ class EditProfileWindow(
 
         v = height - 115.0 + yoffs
         self._name = (
-            '' if self._existing_profile is None else self._existing_profile
+            '' if existing_profile is None else existing_profile
         )
         self._is_account_profile = self._name == '__account__'
 

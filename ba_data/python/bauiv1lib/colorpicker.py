@@ -250,6 +250,16 @@ class ColorPickerExact(PopupWindow):
             allow_clear_button=False,
             glow_type='uniform',
         )
+        bui.buttonwidget(
+            parent=self.root_widget,
+            label='',
+            autoselect=True,
+            size=(37, 37),
+            position=(width - 13 - 37, height - 37),
+            texture=bui.gettexture('file'),
+            color=(1, 1, 1),
+            on_activate_call=self._copy_hex,
+        )
 
         x = 50
         y = height - 90
@@ -382,6 +392,16 @@ class ColorPickerExact(PopupWindow):
             0.0, min(1.0, self._color[color_index] + offs)
         )
         self._update_for_color()
+
+    def _copy_hex(self) -> None:
+        if bui.clipboard_is_supported():
+            r, g, b = self._color
+            color = color_to_hex(r, g, b, None)
+            bui.clipboard_set_text(color)
+            # bui.screenmessage(
+            #     bui.Lstr(resource='copyConfirmText'), color=(0, 1, 0)
+            # )
+            bui.getsound('gunCocking').play()
 
     def get_tag(self) -> Any:
         """Return this popup's tag value."""
