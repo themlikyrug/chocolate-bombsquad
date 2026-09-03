@@ -1,5 +1,5 @@
-# BombSquad: Vanilla Tweaks
-BombSquad: Vanilla Tweaks is a modpack that 
+# Chocolate BombSquad
+Chocolate BombSquad (formerly named BombSquad: Vanilla Tweaks) is a modpack that 
 aims to bring minor gameplay changes,
 and a VARIETY of client-side and quality 
 of life changes and additions, while attempting 
