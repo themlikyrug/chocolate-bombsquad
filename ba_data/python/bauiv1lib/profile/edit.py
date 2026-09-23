@@ -197,6 +197,33 @@ class EditProfileWindow(
             v_align='center',
             color=(1, 1, 0, 0.5),
         )
+        if (
+            self._is_account_profile
+            or not self._existing_profile
+        ):
+            has_delete_btn = False
+        else:
+            has_delete_btn = True
+        delbtn_width = 250
+        delbtn_height = 50
+        if has_delete_btn:
+            delbtn_v = 70 - delbtn_height * 0.5
+            if uiscale is bui.UIScale.SMALL:
+                delbtn_v += 70
+                v += 30
+            bui.buttonwidget(
+                parent=self._root_widget,
+                position=(
+                    self._width * 0.5 - delbtn_width * 0.5, 
+                    delbtn_v,
+                ),
+                size=(delbtn_width, delbtn_height),
+                label=bui.Lstr(resource='deleteText'),
+                color=(0.6, 0.5, 0.65),
+                textcolor=(1.0, 0.6, 0.6),
+                on_activate_call=self._confirm_delete,
+                autoselect=True,
+            )
 
         if not self._is_account_profile and not self._global:
             bui.textwidget(
@@ -811,6 +838,7 @@ class EditProfileWindow(
                 tint_color=self._color,
                 tint2_color=self._highlight,
             )
+        self._play_voiceline('attack')
 
     def _update_icon(self) -> None:
         if self._icon_button_label:
@@ -825,6 +853,58 @@ class EditProfileWindow(
         else:
             new_name = cast(str, bui.textwidget(query=self._text_field))
         return new_name
+
+    def _delete(self) -> None:
+        plus = bui.app.plus
+        assert plus is not None
+
+        plus.add_v1_account_transaction(
+            {'type': 'REMOVE_PLAYER_PROFILE', 'name': self._existing_profile}
+        )
+
+        # Go back to default selection.
+        from bauiv1lib.profile.browser import ProfileBrowserWindow
+        ProfileBrowserWindow.selected_profile = None
+
+        plus.run_v1_account_transactions()
+        bui.getsound('shieldDown').play()
+        bui.getsound('explosion01').play()
+        self._play_voiceline('fall')
+        self.main_window_back()
+
+    def _play_voiceline(self, type: str):
+        """Plays a random choice of the 
+        character's wanted voiceline."""
+        spaz = self._spazzes[self._icon_index]
+        app = bs.app.classic.spaz_appearances[spaz]
+        media = {
+            'jump': app.jump_sounds,
+            'fall': app.fall_sounds,
+            'attack': app.attack_sounds,
+            'impact': app.impact_sounds,
+            'death': app.death_sounds,
+            'pickup': app.pickup_sounds,
+        }
+        voicelines = media.get(type, [])
+        choice = random.choice(voicelines)
+        sound = bui.getsound(choice)
+        sound.play()
+
+
+    def _confirm_delete(self) -> None:
+        """Confirm deletion of this profile."""
+        from bauiv1lib.confirm import ConfirmWindow
+        self._play_voiceline('impact')
+        bui.getsound('activateBeep').play()
+        ConfirmWindow(
+            bui.Lstr(
+                resource='playerProfilesWindow.deleteConfirmText',
+                subs=[('${PROFILE}', self.getname())]
+            ),
+            cancel_button=True,
+            action=self._delete,
+            origin_widget=self._root_widget,
+        )
 
     def save(self, transition_out: bool = True) -> bool:
         """Save has been selected."""

@@ -2043,9 +2043,9 @@
   },
   "newProfileWindow": {
     "titleText": "New Profile",
-    "scratchButtonText": "Start from\nScratch",
-    "cloneButtonText": "Copy Existing\nProfile",
-    "queryText": "Do you want to clone the\nselected profile or start from scratch?"
+    "scratchButtonText": "Start from Scratch",
+    "cloneButtonText": "Copy Existing Profile",
+    "queryText": "Do you want to clone the selected\nprofile or start from scratch?"
   },
   "comment2": "ok end of vanilla tweaks stuff comment here cuz im too lazy to remove trailing commas"
 }

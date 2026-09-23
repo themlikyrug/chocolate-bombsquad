@@ -121,9 +121,6 @@ class AccountViewerWindow(PopupWindow):
         # offer a 'report this user' button.
         if (
             bui.is_browser_likely_available()
-            and plus.get_v1_account_misc_read_val(
-                'showAccountExtrasMenu', False
-            )
         ):
             self._extras_menu_button = bui.buttonwidget(
                 parent=self.root_widget,

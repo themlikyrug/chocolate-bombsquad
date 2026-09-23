@@ -845,13 +845,14 @@ class ResourcePacksWindow(bui.MainWindow):
         self._applying_window = ResourcePacksApplyingWindow()
         # ok, so music playing is bad so lets kill it for now
         activity = bs.get_foreground_host_activity()
-        globs = activity.globalsnode
-        # uuuggghhh
-        for type in bs.MusicType:
-            if type.value == globs.music:
-                self._saved_music = type
-        with activity.context:
-            bs.setmusic(None)
+        if activity:
+            globs = activity.globalsnode
+            # uuuggghhh
+            for type in bs.MusicType:
+                if type.value == globs.music:
+                    self._saved_music = type
+            with activity.context:
+                bs.setmusic(None)
         threading.Thread(
             target=self._apply_resource_packs_thread,
             daemon=False,
@@ -879,7 +880,7 @@ class ResourcePacksWindow(bui.MainWindow):
                 ],
             )
             bui.screenmessage(error_text, color=(1, 0, 0))
-            bui.getsound('error').play()
+            bui.pushcall(bui.getsound('error').play)
             return
         for pack in self._enabled_packs:
             try:
@@ -909,8 +910,10 @@ class ResourcePacksWindow(bui.MainWindow):
             self._applying_window.close()
             self._applying_window = None
         # alright, let it free again
-        with bs.get_foreground_host_activity().context:
-            bs.setmusic(self._saved_music)
+        activity = bs.get_foreground_host_activity()
+        if activity:
+            with activity.context:
+                bs.setmusic(self._saved_music)
         if success:
             self._done_sound.play()
         bui.app.config.commit()

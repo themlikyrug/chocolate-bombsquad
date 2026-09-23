@@ -70,7 +70,8 @@ class PartyEntryWindow(bui.Window):
                     'menu_tokens' 
                     if uiscale is bui.UIScale.SMALL 
                     else 'menu_full'
-                )
+                ),
+                on_outside_click_call=self.close,
             )
         )
         
@@ -96,8 +97,8 @@ class PartyEntryWindow(bui.Window):
             size=(64, 64),
             scale=0.7,
             autoselect=True,
-            texture=bui.gettexture('textClearButton'),
-            label='',
+            texture=bui.gettexture('nub'),
+            label=bui.charstr(bui.SpecialChar.CLOSE),
             on_activate_call=self.close,
             color=(0.6, 0.2, 0.2),
             textcolor=(1, 1, 1),

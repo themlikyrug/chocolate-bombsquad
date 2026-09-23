@@ -810,10 +810,10 @@ class NewsDisplay:
                         color=((1, 1, 1, 1) if vrmode else (0.95, 0.9, 1, 0.4)),
                         host_only=True,
                         maxwidth=200,
-                        position=(-300, -35),
-                        h_align=Text.HAlign.RIGHT,
+                        position=(0, -40),
+                        h_align=Text.HAlign.CENTER,
                         transition=Text.Transition.FADE_IN,
-                        scale=0.9 if vrmode else 0.7,
+                        scale=1.1 if vrmode else 0.9,
                         flatness=1.0 if vrmode else 0.6,
                         shadow=1.0 if vrmode else 0.5,
                         h_attach=Text.HAttach.CENTER,
@@ -826,11 +826,13 @@ class NewsDisplay:
                         for a in app.classic.ach.achievements
                         if not a.complete
                     ]
+                    spacing = 160
+                    xoffs = -70
                     if achs:
                         ach = achs.pop(random.randrange(min(4, len(achs))))
                         ach.create_display(
-                            -180,
-                            -35,
+                            -spacing + xoffs,
+                            -70,
                             1.0,
                             outdelay=self._message_duration,
                             style='news',
@@ -838,8 +840,8 @@ class NewsDisplay:
                     if achs:
                         ach = achs.pop(random.randrange(min(8, len(achs))))
                         ach.create_display(
-                            180,
-                            -35,
+                            spacing + xoffs,
+                            -70,
                             1.25,
                             outdelay=self._message_duration,
                             style='news',
@@ -880,13 +882,13 @@ class NewsDisplay:
 
             assert bs.app.classic is not None
             scl = (
-                1.2
+                1.3
                 if (bs.app.ui_v1.uiscale is bs.UIScale.SMALL or bs.app.env.vr)
-                else 0.8
+                else 0.9
             )
 
             color2 = (1, 1, 1, 1) if bs.app.env.vr else (0.7, 0.65, 0.75, 1.0)
-            shadow = 1.0 if bs.app.env.vr else 0.4
+            shadow = 0.7
             self._text = bs.NodeActor(
                 bs.newnode(
                     'text',
@@ -896,12 +898,12 @@ class NewsDisplay:
                         'h_align': 'center',
                         'vr_depth': -20,
                         'shadow': shadow,
-                        'flatness': 0.8,
+                        'flatness': 0.9,
                         'v_align': 'top',
                         'color': color2,
                         'scale': scl,
                         'maxwidth': 900.0 / scl,
-                        'position': (0, -10),
+                        'position': (0, -60),
                     },
                 )
             )
