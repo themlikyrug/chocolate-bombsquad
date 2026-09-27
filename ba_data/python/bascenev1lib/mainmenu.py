@@ -7,6 +7,7 @@ from __future__ import annotations
 import time
 import random
 import weakref
+import datetime
 from typing import TYPE_CHECKING, override
 
 from bacommon.locale import LocaleResolved
@@ -268,6 +269,16 @@ class MainMenuActivity(bs.Activity[bs.Player, bs.Team]):
         # pylint: disable=too-many-statements
         app = bs.app
         assert app.classic is not None
+        
+        today = datetime.date.today()
+        now = datetime.datetime.now()
+        saturday = today.weekday() == 5
+        our_tickets = bs.app.classic.tickets
+        correct_amount = our_tickets == 6471
+        is_8pm = now.hour == 20
+        gambler = random.random() < 0.00001
+        if saturday and correct_amount and is_8pm and gambler:
+            bs.getsound('spazScream01').play()
 
         # Update logo in case it changes.
         if self._logo_node:
